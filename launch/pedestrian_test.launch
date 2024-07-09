@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<launch>
+    <node pkg="planning" type="reference_publisher.py" name="reference_publisher_node" output="screen" args="path static pedestrian dynamic serialize" />
+    <node pkg="planning" type="node" name="planning_node" output="screen"/>
+    <node pkg="rviz" type="rviz" name="rviz" args="-d $(find planning)/config/config.rviz"/>
+</launch>
