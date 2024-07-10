@@ -12,6 +12,7 @@
 #include "trajectory_planner.h"
 
 #include "visualization/plot.h"
+#include "timer.h"
 
 #include <iostream>
 
@@ -19,15 +20,21 @@ namespace planning {
 
 bool TrajectoryPlanner::Plan(const StartState& state, DiscretizedTrajectory& result) {
   DiscretizedTrajectory coarse_trajectory;
+  utils::time dp_start_time = utils::Time();
   if(!dp_.Plan(state.x, state.y, state.theta, coarse_trajectory)) {
     ROS_ERROR("DP failed");
     return false;
   }
+  utils::time dp_end_time = utils::Time();
+  double dp_time_cost = utils::Duration(dp_start_time, dp_end_time);
+  std::cout << "DP time cost: " << dp_time_cost << std::endl;
    
   CorridorConstraints corridor_constraints;
   ConvexPolygons convex_polygons;
   LeftLaneConstraints left_lane_constraints;
   RightLaneConstraints right_lane_constraints;
+  
+  utils::time corridor_start_time = utils::Time();
   if (!corridor_.Plan(coarse_trajectory, 
                       &corridor_constraints,
                       &convex_polygons, 
@@ -36,6 +43,9 @@ bool TrajectoryPlanner::Plan(const StartState& state, DiscretizedTrajectory& res
     ROS_ERROR("Corridor failed");
     return false;
   }
+  utils::time corridor_end_time = utils::Time();
+  double corridor_time_cost = utils::Duration(corridor_start_time, corridor_end_time);
+  std::cout << "Corridor time cost: " << corridor_time_cost << std::endl;
 
   // visualization::PlotConvexPolygons(convex_polygons, 0.1, visualization::Color::Cyan, 1, "Safe Corridors");
   // visualization::Trigger();
