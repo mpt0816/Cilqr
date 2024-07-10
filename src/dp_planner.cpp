@@ -28,7 +28,7 @@ using math::Polygon2d;
 constexpr double kMathEpsilon = 1e-3;
 
 DpPlanner::DpPlanner(const PlannerConfig& config, const Env& env)
-  : env_(env), config_(config), nseg_(config.nfe / NT), unit_time_(config.tf / NT) {
+  : env_(env), config_(config), unit_time_(config.tf / NT) {
   time_ = math::LinSpaced<NT>(unit_time_, config.tf);
   station_ = math::LinSpaced<NS>(0, unit_time_ * config_.vehicle.max_velocity);
   lateral_ = math::LinSpaced<NL - 1>(0, 1);
@@ -47,13 +47,13 @@ double DpPlanner::GetCollisionCost(StateIndex parent_ind, StateIndex cur_ind) {
       grandparent_s = parent_cell.current_s;
     }
 
-    auto prev_path = InterpolateLinearly(grandparent_s, cell.parent_l_ind, parent_ind.s, parent_ind.l);
+    auto prev_path = InterpolateLinearly(grandparent_s, cell.parent_l_ind, parent_ind.t, parent_ind.s, parent_ind.l);
     last_l = prev_path.back().y();
     last_s = prev_path.back().x();
   }
 
-  auto path = InterpolateLinearly(parent_s, parent_ind.l, cur_ind.s, cur_ind.l);
-
+  auto path = InterpolateLinearly(parent_s, parent_ind.l, cur_ind.t, cur_ind.s, cur_ind.l);
+  int nseg = path.size();
   for (int i = 0; i < path.size(); i++) {
     auto &pt = path[i];
     double dl = pt.y() - last_l;
@@ -73,7 +73,7 @@ double DpPlanner::GetCollisionCost(StateIndex parent_ind, StateIndex cur_ind) {
     math::Pose pose(cart.x(), cart.y(), heading);
 
     double parent_time = parent_ind.t < 0 ? 0.0 : time_[parent_ind.t];
-    double time = parent_time + i * (unit_time_ / nseg_);
+    double time = parent_time + i * (unit_time_ / nseg);
 
     if(env_->CheckOptimizationCollision(time, pose)) {
       return config_.dp_w_obstacle;
@@ -209,27 +209,27 @@ bool DpPlanner::Plan(double start_x, double start_y, double start_theta, Discret
 
   // interpolation
   Trajectory data;
-  data.resize(config_.nfe);
+  data.resize(config_.tf / config_.delta_t + 1);
   double last_l = state_.start_l, last_s = state_.start_s;
-
+  
+  int n = 0;
   for (int i = 0; i < NT; i++) {
     double parent_s = i > 0 ? waypoints[i - 1].second.current_s : state_.start_s;
-    auto segment = InterpolateLinearly(parent_s, waypoints[i].second.parent_l_ind, waypoints[i].first.s,
-                                       waypoints[i].first.l);
-
-    for (int j = 0; j < nseg_; j++) {
+    auto segment = InterpolateLinearly(parent_s, waypoints[i].second.parent_l_ind, 
+                                       i, waypoints[i].first.s, waypoints[i].first.l);
+    
+    for (int j = 0; j < segment.size(); j++) {
       auto dl = segment[j].y() - last_l;
       auto ds = std::max(segment[j].x() - last_s, kMathEpsilon);
       last_l = segment[j].y();
       last_s = segment[j].x();
-
       auto xy = env_->reference().GetCartesian(segment[j].x(), segment[j].y());
       auto tp = env_->reference().EvaluateStation(segment[j].x());
-      int n = i * nseg_ + j;
       data[n].s = segment[j].x();
       data[n].x = xy.x();
       data[n].y = xy.y();
       data[n].theta = tp.theta + atan((dl / ds) / (1 - tp.kappa * segment[j].y()));
+      ++n;
     }
   }
   data[0].theta = state_.start_theta;
@@ -239,8 +239,24 @@ bool DpPlanner::Plan(double start_x, double start_y, double start_theta, Discret
   return min_cost < config_.dp_w_obstacle;
 }
 
-std::vector<Vec2d> DpPlanner::InterpolateLinearly(double parent_s, int parent_l_ind, int cur_s_ind, int cur_l_ind) {
-  std::vector<Vec2d> result(nseg_);
+std::vector<Vec2d> DpPlanner::InterpolateLinearly(
+    double parent_s, int parent_l_ind, 
+    int cur_t_ind, int cur_s_ind, int cur_l_ind) {
+
+  int nseg = 0;
+  for (double t = 0.0; t < config_.tf + config_.delta_t - math::kMathEpsilon; t += config_.delta_t) {
+    if (cur_t_ind == 0) {
+      if (t > 0.0 - kMathEpsilon && t < unit_time_ + kMathEpsilon) {
+        ++nseg;
+      }
+    } else {
+      if (t > time_[cur_t_ind] - unit_time_ + math::kMathEpsilon && t < time_[cur_t_ind] + math::kMathEpsilon) {
+        ++nseg;
+      }
+    }
+  }
+
+  std::vector<Vec2d> result(nseg);
 
   double p_l = state_.start_l;
   double p_s = state_.start_s;
@@ -251,10 +267,10 @@ std::vector<Vec2d> DpPlanner::InterpolateLinearly(double parent_s, int parent_l_
   double cur_s = p_s + station_[cur_s_ind];
   double cur_l = GetLateralOffset(cur_s, cur_l_ind);
 
-  double s_step = station_[cur_s_ind] / nseg_;
-  double l_step = (cur_l - p_l) / nseg_;
+  double s_step = station_[cur_s_ind] / nseg;
+  double l_step = (cur_l - p_l) / nseg;
 
-  for (int i = 0; i < nseg_; i++) {
+  for (int i = 0; i < nseg; i++) {
     result[i].set_x(p_s + i * s_step);
     result[i].set_y(p_l + i * l_step);
   }

@@ -145,7 +145,7 @@ def generate_random_dynamic_vehicles(center_line, count, horizon=16.0, dt=0.1):
         start_s = ref[i, 0]
         start_s_ind = bisect.bisect_left(cls, start_s)
 
-        traj_len = int(horizon / dt)
+        traj_len = int(horizon / dt) + 1
         s_ind = np.linspace(start_s_ind, bisect.bisect_left(cls, min(max_s, start_s + velocities[i] * horizon)),
                             traj_len, dtype=np.int)
 

@@ -13,6 +13,8 @@
 
 #include "visualization/plot.h"
 
+#include <iostream>
+
 namespace planning {
 
 bool TrajectoryPlanner::Plan(const StartState& state, DiscretizedTrajectory& result) {
@@ -34,7 +36,8 @@ bool TrajectoryPlanner::Plan(const StartState& state, DiscretizedTrajectory& res
   std::vector<double> opti_x, opti_y, opti_v;
   Trajectory result_data;
   double incremental_s = 0.0;
-  for(int i = 0; i < config_.nfe; i++) {
+  int nfe = config_.tf / config_.delta_t + 1;
+  for(int i = 0; i < nfe; i++) {
     TrajectoryPoint tp;
     incremental_s += i > 0 ? hypot(coarse_trajectory.trajectory()[i].x - coarse_trajectory.trajectory()[i - 1].x, coarse_trajectory.trajectory()[i].y - coarse_trajectory.trajectory()[i - 1].y) : 0.0;
     tp.s = incremental_s;

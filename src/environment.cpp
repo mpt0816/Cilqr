@@ -131,12 +131,13 @@ Environment::QueryDynamicObstacles(const double time) {
   int idx = 0;
   for (auto& obstacle: dynamic_obstacles_) {
     idx++;
-    if (obstacle.front().first > time || obstacle.back().first < time) {
+    if (obstacle.front().first > time + math::kMathEpsilon || 
+        obstacle.back().first < time - math::kMathEpsilon) {
       continue;
     }
     auto result = std::upper_bound(obstacle.begin(), obstacle.end(), time,
                                    [](const double val, const std::pair<double, math::Polygon2d>& ob) {
-                                     return val < ob.first;
+                                     return val < ob.first + math::kMathEpsilon;
                                    });
 
     filtered.insert({idx, result->second});

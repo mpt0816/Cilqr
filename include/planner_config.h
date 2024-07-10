@@ -23,11 +23,22 @@ struct IlqrConfig {
 
 };
 
+struct CorridorConfig {
+  double max_diff_x = 15.0;
+  double max_diff_y = 15.0;
+  double radius = 20.0;
+
+  double max_axis_x = 10.0;
+  double max_axis_y = 10.0;
+};
+
 struct PlannerConfig {
   /**
    * Number of finite elements used to discretize an OCP
    */
   int nfe = 320;
+
+  double delta_t = 0.1;
 
   /**
    * Time horizon length (s)
@@ -115,6 +126,8 @@ struct PlannerConfig {
   double opti_varepsilon_tol = 1e-4;
 
   VehicleParam vehicle;
+
+  CorridorConfig corridor_config;
 };
 
 } // namespace planning

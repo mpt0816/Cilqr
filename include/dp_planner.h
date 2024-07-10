@@ -66,7 +66,6 @@ class DpPlanner {
   Env env_;
   PlannerConfig config_;
 
-  int nseg_;
   double unit_time_;
   std::array<double, NT> time_;
   std::array<double, NS> station_;
@@ -91,7 +90,9 @@ class DpPlanner {
     return lb + (ub - lb) * lateral_[l_ind];
   }
 
-  std::vector<math::Vec2d> InterpolateLinearly(double parent_s, int parent_l_ind, int cur_s_ind, int cur_l_ind);
+  std::vector<math::Vec2d> InterpolateLinearly(
+      double parent_s, int parent_l_ind, 
+      int cur_t_ind, int cur_s_ind, int cur_l_ind);
 };
 
 

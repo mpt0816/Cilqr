@@ -1,4 +1,5 @@
 #include "planning_node.h"
+#include <iostream>
 
 namespace planning {
 
@@ -68,7 +69,6 @@ void PlanningNode::DynamicObstaclesCallback(const DynamicObstaclesConstPtr& msg)
         points.push_back(coord.transform({pt.x, pt.y, 0.0}));
       }
       math::Polygon2d polygon(points);
-
       dynamic_obstacle.emplace_back(tp.time, points);
     }
 
@@ -79,10 +79,10 @@ void PlanningNode::DynamicObstaclesCallback(const DynamicObstaclesConstPtr& msg)
 
 void PlanningNode::PlanCallback(const geometry_msgs::PoseStampedConstPtr& msg) {
   DiscretizedTrajectory result;
-
+  double dt = config_.delta_t;
+  int nfe = config_.tf / config_.delta_t + 1;
   if (planner_->Plan(state_, result)) {
-    double dt = config_.tf / (double) (config_.nfe - 1);
-    for (int i = 0; i < config_.nfe; i++) {
+    for (int i = 0; i < nfe; i++) {
       double time = dt * i;
       auto dynamic_obstacles = env_->QueryDynamicObstacles(time);
       for (auto &obstacle: dynamic_obstacles) {
@@ -92,7 +92,6 @@ void PlanningNode::PlanCallback(const geometry_msgs::PoseStampedConstPtr& msg) {
             obstacle.second, 0.2, visualization::Color::fromHSV(hue, 1.0, 1.0), 
             obstacle.first, "Online Obstacle");
       }
-
       auto &pt = result.trajectory().at(i);
       PlotVehicle(1, {pt.x, pt.y, pt.theta}, atan(pt.kappa * config_.vehicle.wheel_base));
       ros::Duration(dt).sleep();

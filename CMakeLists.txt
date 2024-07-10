@@ -10,6 +10,9 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
 )
 
+find_package(Eigen3 REQUIRED)
+find_package(OpenCV REQUIRED)
+
 add_message_files(
   FILES
   CenterLinePoint.msg
@@ -31,6 +34,7 @@ catkin_package(
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
+  ${EIGEN3_INCLUDE_DIR}
 )
 
 option(WITH_HSL "Compile solver with coinhsl" ON)
@@ -68,4 +72,5 @@ add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catk
 
 target_link_libraries(${PROJECT_NAME}_node
   ${catkin_LIBRARIES}
+  ${OpenCV_LIBS}
 )
