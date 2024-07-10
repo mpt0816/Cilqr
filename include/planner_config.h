@@ -15,21 +15,20 @@
 
 namespace planning {
 
-struct DPPlannerConfig {
-
-};
-
 struct IlqrConfig {
 
 };
 
 struct CorridorConfig {
-  double max_diff_x = 15.0;
-  double max_diff_y = 15.0;
-  double radius = 20.0;
+  bool is_multiple_sample{false};
+  double max_diff_x{25.0};
+  double max_diff_y{25.0};
+  double radius{150.0};
 
-  double max_axis_x = 10.0;
-  double max_axis_y = 10.0;
+  double max_axis_x{10.0};
+  double max_axis_y{10.0};
+
+  double lane_segment_length{5.0};
 };
 
 struct PlannerConfig {

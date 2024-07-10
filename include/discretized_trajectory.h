@@ -20,6 +20,7 @@
 namespace planning {
 
 struct TrajectoryPoint {
+  double time = 0.0;
   double s = 0.0;
 
   double x = 0.0;
@@ -65,6 +66,10 @@ class DiscretizedTrajectory {
   math::Vec2d GetProjection(const math::Vec2d& xy) const;
 
   math::Vec2d GetCartesian(const double station, const double lateral) const;
+
+  bool empty() const {
+    return trajectory_.empty();
+  }
 
 
  protected:

@@ -23,6 +23,22 @@ bool TrajectoryPlanner::Plan(const StartState& state, DiscretizedTrajectory& res
     ROS_ERROR("DP failed");
     return false;
   }
+   
+  CorridorConstraints corridor_constraints;
+  ConvexPolygons convex_polygons;
+  LeftLaneConstraints left_lane_constraints;
+  RightLaneConstraints right_lane_constraints;
+  if (!corridor_.Plan(coarse_trajectory, 
+                      &corridor_constraints,
+                      &convex_polygons, 
+                      &left_lane_constraints, 
+                      &right_lane_constraints)) {
+    ROS_ERROR("Corridor failed");
+    return false;
+  }
+
+  // visualization::PlotConvexPolygons(convex_polygons, 0.1, visualization::Color::Cyan, 1, "Safe Corridors");
+  // visualization::Trigger();
 
   std::vector<double> coarse_x, coarse_y;
   for(auto &pt: coarse_trajectory.trajectory()) {
@@ -59,6 +75,22 @@ bool TrajectoryPlanner::Plan(const StartState& state, DiscretizedTrajectory& res
   visualization::Trigger();
 
   result = DiscretizedTrajectory(result_data);
+  convex_polygons_ = convex_polygons;
+
+  left_lane_boundary_.clear();
+  for (const auto& seg : left_lane_constraints) {
+    left_lane_boundary_.push_back(seg.second);
+  }
+  
+  right_lane_boundary_.clear();
+  for (const auto& seg : right_lane_constraints) {
+    right_lane_boundary_.push_back(seg.second);
+  }
+
+  visualization::PlotLineSegments(left_lane_boundary_, 0.1, visualization::Color::Cyan, 1, "Left Lane Segments");
+  visualization::PlotLineSegments(right_lane_boundary_, 0.1, visualization::Color::Cyan, 1, "Right Lane Segments");
+  visualization::Trigger();
+
   return true;
 }
 } // namespace planning

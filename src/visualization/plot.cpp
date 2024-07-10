@@ -101,6 +101,100 @@ void PlotPolygon(const Polygon2d &polygon, double width, Color color, int id,
   PlotPolygon(xs, ys, width, color, id, ns);
 }
 
+void PlotConvexPolygon(
+    const std::vector<Eigen::Vector2d>& polygon, 
+    double width,
+    Color color,
+    int id, const std::string &ns) {
+  std::vector<double> xs, ys;
+  for (const auto& pt: polygon) {
+    xs.push_back(pt[0]);
+    ys.push_back(pt[1]);
+  }
+  PlotPolygon(xs, ys, width, color, id, ns);
+}
+
+void PlotConvexPolygons(
+    const std::vector<std::vector<Eigen::Vector2d>>& polygons, 
+    double width,
+    Color color, 
+    int id, const std::string &ns) {
+  int i = 0;
+  for (const auto& p : polygons) {
+    ++i;
+    std::string name_space = ns + std::to_string(i);
+    PlotConvexPolygon(p, width, color, id, name_space);
+  }
+}
+
+void PlotPoint(
+    const math::Vec2d& pt, 
+    double width,
+    Color color, 
+    int id, const std::string &ns) {
+  visualization_msgs::Marker msg;
+  msg.header.frame_id = frame_;
+  msg.header.stamp = ros::Time();
+  msg.ns = ns;
+  msg.id = id >= 0 ? id : arr_.markers.size();
+
+  msg.action = visualization_msgs::Marker::ADD;
+  msg.type = visualization_msgs::Marker::SPHERE;
+  msg.pose.position.x = pt.x();
+  msg.pose.position.y = pt.y();
+  msg.pose.position.z = 0;
+  msg.pose.position.y = pt.y();
+  msg.pose.position.z = 0;
+  msg.pose.orientation.w = 1.0;
+  msg.scale.x = width * 2.0;
+  msg.scale.y = width * 2.0;
+  msg.scale.z = 0.01;
+  msg.color = color.toColorRGBA();
+  
+  mutex_.lock();
+  arr_.markers.push_back(msg);
+  mutex_.unlock();
+}
+
+void PlotPoints(
+    const std::vector<math::Vec2d>& pts, 
+    double width,
+    Color color, 
+    int id, const std::string &ns) {
+  int i = 0;
+  for (const auto& pt : pts) {
+    ++i;
+    std::string name_space = ns + std::to_string(i);
+    PlotPoint(pt, width, color, id, name_space);
+  }
+}
+
+void PlotLineSegment(
+    const math::LineSegment2d& line, 
+    double width,
+    Color color, 
+    int id, const std::string &ns) {
+  std::vector<double> xs, ys;
+  xs.push_back(line.start().x());
+  xs.push_back(line.end().x());
+  ys.push_back(line.start().y());
+  ys.push_back(line.end().y());
+  Plot(xs, ys, width, color, id, ns);
+}
+
+void PlotLineSegments(
+    const std::vector<math::LineSegment2d>& lines, 
+    double width,
+    Color color, 
+    int id, const std::string &ns) {
+  int i = 0;
+  for (const auto& line : lines) {
+    ++i;
+    std::string name_space = ns + std::to_string(i);
+    PlotLineSegment(line, width, color, id, name_space);
+  }
+}
+
 void PlotTrajectory(const Vector &xs, const Vector &ys, const Vector &vs, double max_velocity, double width,
                     const Color &color, int id, const std::string &ns) {
   std::vector<Color> colors(xs.size());

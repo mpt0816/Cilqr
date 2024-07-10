@@ -32,10 +32,12 @@ namespace math {
 Polygon2d::Polygon2d(const Box2d &box) {
   box.GetAllCorners(&points_);
   BuildFromPoints();
+  BuildSamplePoints();
 }
 
 Polygon2d::Polygon2d(std::vector<Vec2d> points) : points_(std::move(points)) {
   BuildFromPoints();
+  BuildSamplePoints();
 }
 
 double Polygon2d::DistanceTo(const Vec2d &point) const {
@@ -251,6 +253,20 @@ void Polygon2d::BuildFromPoints() {
     max_x_ = std::max(max_x_, point.x());
     min_y_ = std::min(min_y_, point.y());
     max_y_ = std::max(max_y_, point.y());
+  }
+}
+
+void Polygon2d::BuildSamplePoints() {
+  sample_points_.clear();
+  constexpr double kSampleMultiple = 5.0;
+  double ratio_step = 1.0 / kSampleMultiple;
+  for (int i = 0; i < points_.size(); ++i) {
+    int index_next = (i + 1) % points_.size();
+    for (double ratio = 0.0; ratio < 1.0 + math::kMathEpsilon; ratio += ratio_step) {
+      double x = points_[i].x() * (1 - ratio) + points_[index_next].x() * ratio; 
+      double y = points_[i].y() * (1 - ratio) + points_[index_next].y() * ratio; 
+      sample_points_.emplace_back(x, y);
+    }
   }
 }
 

@@ -201,11 +201,11 @@ bool DpPlanner::Plan(double start_x, double start_y, double start_theta, Discret
     min_l_ind = cell.parent_l_ind;
   }
 
-  ROS_INFO("s[0] = %f", state_.start_s);
-  int t_ind = 1;
-  for(auto &wp: waypoints) {
-    ROS_INFO("s[%d] = %f", t_ind++, wp.second.current_s);
-  }
+  // ROS_INFO("s[0] = %f", state_.start_s);
+  // int t_ind = 1;
+  // for(auto &wp: waypoints) {
+  //   ROS_INFO("s[%d] = %f", t_ind++, wp.second.current_s);
+  // }
 
   // interpolation
   Trajectory data;
@@ -225,6 +225,7 @@ bool DpPlanner::Plan(double start_x, double start_y, double start_theta, Discret
       last_s = segment[j].x();
       auto xy = env_->reference().GetCartesian(segment[j].x(), segment[j].y());
       auto tp = env_->reference().EvaluateStation(segment[j].x());
+      data[n].time = config_.delta_t * n;
       data[n].s = segment[j].x();
       data[n].x = xy.x();
       data[n].y = xy.y();

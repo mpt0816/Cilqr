@@ -62,7 +62,8 @@ set(SRC
   src/environment.cpp
   src/dp_planner.cpp
   src/visualization/plot.cpp
-  src/visualization/color.cpp)
+  src/visualization/color.cpp
+  src/corridor.cc)
 
 add_executable(${PROJECT_NAME}_node  src/main.cc ${SRC})
 

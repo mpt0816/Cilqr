@@ -16,6 +16,8 @@
 #include "math/vec2d.h"
 #include "math/polygon2d.h"
 
+#include <Eigen/Eigen>
+
 #include <mutex>
 #include <ros/ros.h>
 #include <visualization_msgs/MarkerArray.h>
@@ -43,6 +45,42 @@ void PlotPolygon(const Vector &xs, const Vector &ys, double width = 0.1, Color c
 
 void PlotPolygon(const Polygon2d &polygon, double width = 0.1, Color color = Color::White,
                  int id = -1, const std::string &ns = "");
+
+void PlotConvexPolygon(
+    const std::vector<Eigen::Vector2d>& polygon, 
+     double width = 0.1,
+    Color color = Color::White,
+    int id = -1, const std::string &ns = "");
+
+void PlotConvexPolygons(
+    const std::vector<std::vector<Eigen::Vector2d>>& polygon, 
+    double width = 0.1,
+    Color color = Color::White, 
+    int id = -1, const std::string &ns = "");
+
+void PlotPoint(
+    const math::Vec2d& pt, 
+    double width = 0.1,
+    Color color = Color::White, 
+    int id = -1, const std::string &ns = "");
+
+void PlotPoints(
+    const std::vector<math::Vec2d>& pt, 
+    double width = 0.1,
+    Color color = Color::White, 
+    int id = -1, const std::string &ns = "");
+
+void PlotLineSegment(
+    const math::LineSegment2d& line, 
+    double width = 0.1,
+    Color color = Color::White, 
+    int id = -1, const std::string &ns = "");
+
+void PlotLineSegments(
+    const std::vector<math::LineSegment2d>& lines, 
+    double width = 0.1,
+    Color color = Color::White, 
+    int id = -1, const std::string &ns = "");
 
 void PlotTrajectory(const Vector &xs, const Vector &ys, const Vector &vs, double max_velocity = 10.0,
                     double width = 0.1, const Color &color = Color::Blue,

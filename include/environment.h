@@ -31,8 +31,25 @@ class Environment {
     return obstacles_;
   }
 
+  bool QueryDynamicObstaclesPoints(
+      const double time,
+      std::vector<math::Vec2d>* const points,
+      const bool is_multiple_sample = false);
+
+  bool QueryStaticObstaclesPoints(
+      std::vector<math::Vec2d>* const points,
+      const bool is_multiple_sample = false);
+
   std::vector<DynamicObstacle>& dynamic_obstacles() {
     return dynamic_obstacles_;
+  }
+
+  const std::vector<math::Vec2d>& left_road_barrier() {
+    return left_road_barrier_;
+  }
+
+  const std::vector<math::Vec2d>& right_road_barrier() {
+    return right_road_barrier_;
   }
 
   const DiscretizedTrajectory& reference() const {
@@ -63,6 +80,9 @@ class Environment {
   std::vector<math::Polygon2d> obstacles_;
   DiscretizedTrajectory reference_;
   std::vector<math::Vec2d> road_barrier_;
+
+  std::vector<math::Vec2d> left_road_barrier_;
+  std::vector<math::Vec2d> right_road_barrier_;
 };
 
 using Env = std::shared_ptr<Environment>;

@@ -14,6 +14,7 @@
 #include "planner_config.h"
 
 #include "dp_planner.h"
+#include "corridor.h"
 
 namespace planning {
 
@@ -24,14 +25,35 @@ public:
   };
 
   explicit TrajectoryPlanner(const PlannerConfig& config, const Env& env)
-    : config_(config), dp_(config, env) {}
+    : config_(config), dp_(config, env), corridor_(config.corridor_config, env) {}
 
   bool Plan(const StartState& state, DiscretizedTrajectory& result);
 
 
+  ConvexPolygons SafeCorridors() {
+    return convex_polygons_;
+  }
+
+  std::vector<std::vector<math::Vec2d>> points_for_corridors() {
+    return corridor_.points_for_corridors();
+  }
+
+  std::vector<math::LineSegment2d> left_lane_boundary() {
+    return left_lane_boundary_;
+  }
+
+  std::vector<math::LineSegment2d> right_lane_boundary() {
+    return right_lane_boundary_;
+  }
+
 private:
   PlannerConfig config_;
   DpPlanner dp_;
+  Corridor corridor_;
+  ConvexPolygons convex_polygons_;
+
+  std::vector<math::LineSegment2d> left_lane_boundary_;
+  std::vector<math::LineSegment2d> right_lane_boundary_;
 };
 
 } // namespace planning

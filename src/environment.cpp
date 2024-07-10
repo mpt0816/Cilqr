@@ -21,6 +21,8 @@ void Environment::set_reference(const DiscretizedTrajectory& reference) {
   reference_ = reference;
 
   road_barrier_.clear();
+  left_road_barrier_.clear();
+  right_road_barrier_.clear();
 
   double start_s = reference_.trajectory().front().s;
   double back_s = reference_.trajectory().back().s;
@@ -31,6 +33,9 @@ void Environment::set_reference(const DiscretizedTrajectory& reference) {
 
     road_barrier_.push_back(reference_.GetCartesian(s, ref.left_bound));
     road_barrier_.push_back(reference_.GetCartesian(s, -ref.right_bound));
+
+    left_road_barrier_.push_back(reference_.GetCartesian(s, ref.left_bound));
+    right_road_barrier_.push_back(reference_.GetCartesian(s, -ref.right_bound));
   }
 
   std::sort(road_barrier_.begin(), road_barrier_.end(), [](const math::Vec2d& a, const math::Vec2d& b) {
@@ -143,6 +148,37 @@ Environment::QueryDynamicObstacles(const double time) {
     filtered.insert({idx, result->second});
   }
   return filtered;
+}
+
+bool Environment::QueryStaticObstaclesPoints(
+    std::vector<math::Vec2d>* const points,
+    const bool is_multiple_sample) {
+  if (points == nullptr) {
+    return false;
+  }
+
+  for (const auto& obstacle : obstacles_) {
+    std::vector<math::Vec2d> corners = is_multiple_sample ? obstacle.sample_points() : obstacle.points();
+    points->insert(points->end(), corners.begin(), corners.end());
+  }
+  return true;
+}
+
+bool Environment::QueryDynamicObstaclesPoints(
+    const double time,
+    std::vector<math::Vec2d>* const points,
+    const bool is_multiple_sample) {
+      
+  if (points == nullptr) {
+    return false;
+  }
+
+  std::unordered_map<int, math::Polygon2d> obstacles = QueryDynamicObstacles(time);
+  for (const auto& obstacle : obstacles) {
+    std::vector<math::Vec2d> corners = is_multiple_sample ? obstacle.second.sample_points() : obstacle.second.points();
+    points->insert(points->end(), corners.begin(), corners.end());
+  }
+  return true;
 }
 
 void Environment::Visualize() {

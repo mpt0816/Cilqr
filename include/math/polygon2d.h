@@ -314,8 +314,13 @@ public:
   double min_y() const { return min_y_; }
   double max_y() const { return max_y_; }
 
+  std::vector<Vec2d> sample_points() const {
+    return sample_points_;
+  }
+
 protected:
   void BuildFromPoints();
+  void BuildSamplePoints();
   int Next(int at) const;
   int Prev(int at) const;
 
@@ -324,6 +329,7 @@ protected:
 
   Vec2d center_;
   std::vector<Vec2d> points_;
+  std::vector<Vec2d> sample_points_;
   int num_points_ = 0;
   std::vector<LineSegment2d> line_segments_;
   bool is_convex_ = false;
