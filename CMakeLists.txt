@@ -1,8 +1,12 @@
 cmake_minimum_required(VERSION 3.5)
 project(planning)
 
-set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_BUILD_TYPE Debug)
+
+add_compile_options(-std=c++14)
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -std=c++14")
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp
@@ -63,7 +67,10 @@ set(SRC
   src/dp_planner.cpp
   src/visualization/plot.cpp
   src/visualization/color.cpp
-  src/corridor.cc)
+  src/corridor.cc
+  src/ilqr_optimizer.cc
+  src/vehicle_model.cc
+  src/discrete_points_math.cc)
 
 add_executable(${PROJECT_NAME}_node  src/main.cc ${SRC})
 

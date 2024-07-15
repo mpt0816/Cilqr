@@ -15,20 +15,40 @@
 
 namespace planning {
 
-struct IlqrConfig {
+struct Weights {
+  double jerk = 10.0;
+  double delta_rate = 1.0;
+  double x_target = 1.0;
+  double y_target = 10.0;
+};
 
+struct IlqrConfig {
+  int num_of_disc = 5;
+  double safe_margin = 0.2;
+  double t = 100.0;
+  double t_rate = 10.0;
+  Weights weights;
+  int max_iter_num = 10;
+
+  double abs_cost_tol = 1e-3;
+  double rel_cost_tol = 1e-3;
+
+  double alpha = 1.0;
+  double gamma = 0.5;
+  double rho = 1e-9;
 };
 
 struct CorridorConfig {
-  bool is_multiple_sample{false};
-  double max_diff_x{25.0};
-  double max_diff_y{25.0};
-  double radius{150.0};
+  bool is_multiple_sample = false;
+  double max_diff_x = 25.0;
+  double max_diff_y = 25.0;
+  double radius = 150.0;
 
-  double max_axis_x{10.0};
-  double max_axis_y{10.0};
-
-  double lane_segment_length{5.0};
+  double max_axis_x = 10.0;
+  double max_axis_y = 10.0;
+  
+  // 
+  double lane_segment_length = 2.0;
 };
 
 struct PlannerConfig {
@@ -127,6 +147,8 @@ struct PlannerConfig {
   VehicleParam vehicle;
 
   CorridorConfig corridor_config;
+
+  IlqrConfig ilqr_config;
 };
 
 } // namespace planning

@@ -29,6 +29,11 @@ struct TrajectoryPoint {
   double kappa = 0.0;
   double velocity = 0.0;
 
+  double a = 0.0;
+  double jerk = 0.0;
+  double delta = 0.0;
+  double delta_rate = 0.0;
+
   double left_bound = 0.0;
   double right_bound = 0.0;
 };

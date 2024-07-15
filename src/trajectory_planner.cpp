@@ -18,6 +18,12 @@
 
 namespace planning {
 
+TrajectoryPlanner::TrajectoryPlanner(const PlannerConfig& config, const Env& env)
+    : config_(config)
+    , dp_(config, env)
+    , corridor_(config.corridor_config, env)
+    , ilqr_optimizer_(config.ilqr_config, config.vehicle, config.tf, config.delta_t) {}
+
 bool TrajectoryPlanner::Plan(const StartState& state, DiscretizedTrajectory& result) {
   DiscretizedTrajectory coarse_trajectory;
   utils::time dp_start_time = utils::Time();
@@ -55,24 +61,52 @@ bool TrajectoryPlanner::Plan(const StartState& state, DiscretizedTrajectory& res
     coarse_x.push_back(pt.x); coarse_y.push_back(pt.y);
   }
 
-  visualization::Plot(coarse_x, coarse_y, 0.1, visualization::Color::Cyan, 1, "Coarse Trajectory");
-  visualization::PlotPoints(coarse_x, coarse_y, 0.3, visualization::Color::Cyan, 2, "Coarse Trajectory");
+  visualization::Plot(coarse_x, coarse_y, 0.1, visualization::Color::Red, 1, "Coarse Trajectory");
+  // visualization::PlotPoints(coarse_x, coarse_y, 0.3, visualization::Color::Cyan, 2, "Coarse Trajectory");
   visualization::Trigger();
+  
+  TrajectoryPoint start_state;
+  start_state.x = state.x; start_state.y = state.y;
+  start_state.velocity = state.v; start_state.theta = state.theta;
+  DiscretizedTrajectory opt_trajectory;
+  std::vector<DiscretizedTrajectory> iter_trajs;
 
+  utils::time ilqr_start_time = utils::Time();
+  bool status = ilqr_optimizer_.Plan(start_state,
+                                     coarse_trajectory, 
+                                     corridor_constraints,
+                                     left_lane_constraints,
+                                     right_lane_constraints,
+                                     &opt_trajectory,
+                                     &iter_trajs);
+  utils::time ilqr_end_time = utils::Time();
+  double ilqr_time_cost = utils::Duration(ilqr_start_time, ilqr_end_time);
+  std::cout << "ilqr time cost: " << ilqr_time_cost << std::endl;
+
+  if (opt_trajectory.empty()) {
+    ROS_ERROR("ilqr failed");
+    return false;
+  }
+  // opt_trajectory = coarse_trajectory;
   std::vector<double> opti_x, opti_y, opti_v;
   Trajectory result_data;
   double incremental_s = 0.0;
   int nfe = config_.tf / config_.delta_t + 1;
   for(int i = 0; i < nfe; i++) {
     TrajectoryPoint tp;
-    incremental_s += i > 0 ? hypot(coarse_trajectory.trajectory()[i].x - coarse_trajectory.trajectory()[i - 1].x, coarse_trajectory.trajectory()[i].y - coarse_trajectory.trajectory()[i - 1].y) : 0.0;
+    tp.time = config_.delta_t * i;
+    incremental_s += i > 0 ? hypot(opt_trajectory.trajectory()[i].x - opt_trajectory.trajectory()[i - 1].x, 
+                                   opt_trajectory.trajectory()[i].y - opt_trajectory.trajectory()[i - 1].y) : 0.0;
     tp.s = incremental_s;
-
-    tp.x = coarse_trajectory.trajectory()[i].x;
-    tp.y = coarse_trajectory.trajectory()[i].y;
-    tp.theta = coarse_trajectory.trajectory()[i].theta;
-    tp.velocity = coarse_trajectory.trajectory()[i].velocity;
-    tp.kappa = tan(coarse_trajectory.trajectory()[i].theta) / config_.vehicle.wheel_base;
+    tp.x = opt_trajectory.trajectory()[i].x;
+    tp.y = opt_trajectory.trajectory()[i].y;
+    tp.theta = opt_trajectory.trajectory()[i].theta;
+    tp.velocity = opt_trajectory.trajectory()[i].velocity;
+    tp.kappa = std::tan(opt_trajectory.trajectory()[i].theta) / config_.vehicle.wheel_base;
+    tp.a = opt_trajectory.trajectory()[i].a;
+    tp.jerk = opt_trajectory.trajectory()[i].jerk;
+    tp.delta = opt_trajectory.trajectory()[i].delta;
+    tp.delta_rate = opt_trajectory.trajectory()[i].delta_rate;
 
     opti_x.push_back(tp.x);
     opti_y.push_back(tp.y);

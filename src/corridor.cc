@@ -48,6 +48,7 @@ bool Corridor::Plan(
     ROS_ERROR("Corridor failed: Right Lane Boundary Constraints Failed!");
     return false;
   }
+  // CheckLaneConstraints(trajectory, *left_lane_constraints, *right_lane_constraints);
   return true;
 }
 
@@ -244,8 +245,13 @@ bool Corridor::BuildCorridor(
   for (size_t i = 0; i < polygon->size(); i++) {
     int iplus1 = (i + 1) % polygon->size();
     Eigen::Vector2d rayi = polygon->at(iplus1) - polygon->at(i);
-    double c = rayi[1] * polygon->at(i)[0] - rayi[0] * polygon->at(i)[1];
-    constraints->push_back(Eigen::Vector3d(rayi[1], -rayi[0], c));
+    double c = -rayi[1] * polygon->at(i)[0] + rayi[0] * polygon->at(i)[1];
+    // if (-origin_x * rayi[1] + origin_y * rayi[0] <= c) {
+    //   std::cout << "corridor constraint correct!" << std::endl;
+    // } else {
+    //   std::cout << "corridor constraint NOT correct!" << std::endl;
+    // }
+    constraints->push_back(Eigen::Vector3d(-rayi[1], rayi[0], c));
   }
   return true;
 }
@@ -292,13 +298,6 @@ bool Corridor::CalRightLaneConstraints(
   return true;
 }
 
-bool Corridor::CalConstraintFromPoints(
-    const math::Vec2d& start_pt,
-    const math::Vec2d& end_pt,
-    Eigen::Vector3d* const constraint) {
-
-}
-
 std::vector<math::Vec2d> Corridor::LaneBoundarySample(
     const std::vector<math::Vec2d>& lane_boundary) {
   std::vector<math::Vec2d> sampled_lane_boundary;
@@ -318,11 +317,85 @@ Eigen::Vector3d Corridor::HalfPlaneConstraint(
     const math::Vec2d& start_pt,
     const math::Vec2d& end_pt) {
   math::Vec2d n = end_pt - start_pt;
-  double a = -n.x();
-  double b = n.y();
+  double a = n.y();
+  double b = -n.x();
   double c = a * start_pt.x() + b * start_pt.y();
   Eigen::Vector3d res(a, b, c);
   return res;
+}
+
+void Corridor::CheckLaneConstraints(
+    const DiscretizedTrajectory& trajectory,
+    const LeftLaneConstraints& left_lane_constraints,
+    const RightLaneConstraints& right_lane_constraints) {
+  std::pair<Eigen::Vector3d, math::LineSegment2d> cons;
+  for (const auto& pt : trajectory.trajectory()) {
+    cons = FindNeastLaneSegment(pt.x, pt.y, left_lane_constraints);
+    if (pt.x * cons.first[0] + pt.y * cons.first[1] <= cons.first[2])  {
+      std::cout << "Left Lane constraint correct!" << std::endl;
+      // visualization::PlotPoint(
+      //       math::Vec2d(pt.x, pt.y), 0.3, visualization::Color::Cyan, 1, "Vehicle Position");
+      // visualization::PlotLineSegment(
+      //       cons.second, 0.3, visualization::Color::Cyan, 1, "Error lane seg");
+      // visualization::Trigger();
+      // ros::Duration(0.3).sleep();
+    } else {
+      visualization::PlotPoint(
+            math::Vec2d(pt.x, pt.y), 0.3, visualization::Color::Cyan, 1, "Vehicle Position");
+      visualization::PlotLineSegment(
+            cons.second, 0.3, visualization::Color::Cyan, 1, "Error lane seg");
+      visualization::Trigger();
+      
+      std::cout << "Left Lane constraint NOT correct!" << std::endl;
+      std::cout << "x, y: " << pt.x << ", " << pt.y 
+                << ", plane, start point: " << cons.second.start().x() << ", " << cons.second.start().y() 
+                << ", end point: " << cons.second.end().x() << ", " << cons.second.end().y() 
+                << ", plane: " << cons.first[0] << ", " << cons.first[1] << ", " << cons.first[2] 
+                << ", ax + by = " << pt.x * cons.first[0] + pt.y * cons.first[1] << std::endl;
+
+      ros::Duration(0.3).sleep();
+    }
+
+    cons = FindNeastLaneSegment(pt.x, pt.y, right_lane_constraints);
+    if (pt.x * cons.first[0] + pt.y * cons.first[1] <= cons.first[2])  {
+      // visualization::PlotPoint(
+      //       math::Vec2d(pt.x, pt.y), 0.3, visualization::Color::Cyan, 1, "Vehicle Position");
+      // visualization::PlotLineSegment(
+      //       cons.second, 0.3, visualization::Color::Cyan, 1, "Error lane seg");
+      // visualization::Trigger();
+      // ros::Duration(0.3).sleep();
+      std::cout << "Right lane constraint correct!" << std::endl;
+    } else {
+      visualization::PlotPoint(
+            math::Vec2d(pt.x, pt.y), 0.3, visualization::Color::Cyan, 1, "Vehicle Position");
+      visualization::PlotLineSegment(
+            cons.second, 0.3, visualization::Color::Cyan, 1, "Error lane seg");
+      visualization::Trigger();
+      ros::Duration(0.3).sleep();
+      std::cout << "x, y: " << pt.x << ", " << pt.y 
+                << ", plane, start point: " << cons.second.start().x() << ", " << cons.second.start().y()
+                << ", end point: " << cons.second.end().x() << ", " << cons.second.end().y() 
+                << ", plane: " << cons.first[0] << ", " << cons.first[1] << ", " << cons.first[2] 
+                << ", ax + by = " << pt.x * cons.first[0] + pt.y * cons.first[1] << std::endl;
+      std::cout << "Right lane  constraint NOT correct!" << std::endl;
+    }
+  }
+}
+
+std::pair<Eigen::Vector3d, math::LineSegment2d> Corridor::FindNeastLaneSegment(
+    const double x, const double y, 
+    const std::vector<std::pair<Eigen::Vector3d, math::LineSegment2d>>& lane_segs) {
+  double min_dis = std::numeric_limits<double>::max();
+  int min_index = -1;
+  for (int i = 0; i < lane_segs.size(); ++i) {
+    double dis = lane_segs[i].second.DistanceTo(math::Vec2d(x, y));
+    if (dis < min_dis) {
+      min_dis = dis;
+      min_index = i;
+    }
+  }
+  std::cout << "min dis: " << min_dis << std::endl;
+  return lane_segs[min_index];
 }
 
 } // namespace planning

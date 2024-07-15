@@ -21,7 +21,7 @@ PlanningNode::PlanningNode(const ros::NodeHandle& nh) : nh_(nh) {
   state_.x = 0.0;
   state_.y = 0.0;
   state_.theta = 0.0;
-  state_.v = 5.0;
+  state_.v = 10.0;
   state_.phi = 0.0;
   state_.a = 0.0;
   state_.omega = 0.0;
@@ -86,19 +86,19 @@ void PlanningNode::PlanCallback(const geometry_msgs::PoseStampedConstPtr& msg) {
     for (int i = 0; i < nfe; i++) {
       double time = dt * i;
       auto dynamic_obstacles = env_->QueryDynamicObstacles(time);
-      for (auto &obstacle: dynamic_obstacles) {
+      for (auto& obstacle: dynamic_obstacles) {
         int hue = int((double) obstacle.first / env_->dynamic_obstacles().size() * 320);
 
         visualization::PlotPolygon(
             obstacle.second, 0.2, visualization::Color::fromHSV(hue, 1.0, 1.0), 
             obstacle.first, "Online Obstacle");
-        
-        visualization::PlotConvexPolygon(
-            convex_polygons[i], 0.1, visualization::Color::Cyan, 1, "Safe Corridors");
-
-        visualization::PlotPoints(
-            points_for_corridors[i], 0.3, visualization::Color::Cyan, 1, "Corridor Points");
       }
+      visualization::PlotConvexPolygon(
+          convex_polygons[i], 0.1, visualization::Color::Cyan, 1, "Safe Corridors");
+
+      visualization::PlotPoints(
+          points_for_corridors[i], 0.3, visualization::Color::Cyan, 1, "Corridor Points");
+          
       auto &pt = result.trajectory().at(i);
       PlotVehicle(1, {pt.x, pt.y, pt.theta}, atan(pt.kappa * config_.vehicle.wheel_base));
       ros::Duration(dt * 1.5).sleep();

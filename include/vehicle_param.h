@@ -28,7 +28,7 @@ class VehicleParam {
   /**
    * L_W, wheelbase of the ego vehicle (m)
    */
-  double wheel_base = 2.80;
+  double wheel_base = 1.0;
 
   /**
    * L_R, rear hang length of the ego vehicle (m)
@@ -54,7 +54,14 @@ class VehicleParam {
   /**
    * Upper bound of |jerk(t)| (m/s^3)
    */
-  double jerk_max = 10.0;
+  double jerk_min = -1.0;
+  double jerk_max = 1.0;
+
+  double delta_min = -40.0 / 180 * M_PI;
+  double delta_max = 40.0 / 180 * M_PI;
+
+  double delta_rate_min = -0.2;
+  double delta_rate_max = 0.2;
 
   /**
    * Upper bound of |\phi(t)| (rad)

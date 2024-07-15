@@ -41,6 +41,11 @@ Generate and run new random case:
 roslaunch planning random_pedestrian_test.launch
 ```
 
+## 4. Generate Safety Corridor
+
+<video src="./resources/corridor_generator_1.webm"></video>
+
+
 ## 3. Acknowledgement
 
 Special thanks to [Bai Li](https://github.com/libai1943/CartesianPlanner) for ros simulation environment

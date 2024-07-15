@@ -83,7 +83,7 @@ Visualization Manager:
       Marker Topic: /trajectory_planner_markers
       Name: MarkerArray
       Namespaces:
-        Coarse Trajectory: false
+        Coarse Trajectory: true
         Footprint: true
         Front Corridor: false
         Intermediate Trajectory: false

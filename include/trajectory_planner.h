@@ -15,6 +15,7 @@
 
 #include "dp_planner.h"
 #include "corridor.h"
+#include "ilqr_optimizer.h"
 
 namespace planning {
 
@@ -24,9 +25,8 @@ public:
     double x, y, theta, v, phi, a, omega;
   };
 
-  explicit TrajectoryPlanner(const PlannerConfig& config, const Env& env)
-    : config_(config), dp_(config, env), corridor_(config.corridor_config, env) {}
-
+  explicit TrajectoryPlanner(const PlannerConfig& config, const Env& env);
+  
   bool Plan(const StartState& state, DiscretizedTrajectory& result);
 
 
@@ -50,8 +50,9 @@ private:
   PlannerConfig config_;
   DpPlanner dp_;
   Corridor corridor_;
-  ConvexPolygons convex_polygons_;
+  IlqrOptimizer ilqr_optimizer_;
 
+  ConvexPolygons convex_polygons_;
   std::vector<math::LineSegment2d> left_lane_boundary_;
   std::vector<math::LineSegment2d> right_lane_boundary_;
 };

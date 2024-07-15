@@ -180,6 +180,8 @@ void PlotLineSegment(
   ys.push_back(line.start().y());
   ys.push_back(line.end().y());
   Plot(xs, ys, width, color, id, ns);
+  // PlotPoint(line.start(), width, color, id, ns + "1");
+  // PlotPoint(line.end(), width, Color::Red, id, ns + "2");
 }
 
 void PlotLineSegments(

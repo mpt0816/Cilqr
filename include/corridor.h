@@ -17,7 +17,7 @@ namespace planning {
 
 using ConvexPolygon = std::vector<Eigen::Vector2d>;
 using ConvexPolygons = std::vector<ConvexPolygon>;
-// ax + by < c, Vector3d << a, b, c
+// Note: ax + by < c, Vector3d << a, b, c
 using Constraints = std::vector<Eigen::Vector3d>;
 using CorridorConstraints = std::vector<Constraints>;
 
@@ -74,6 +74,15 @@ class Corridor {
   Eigen::Vector3d HalfPlaneConstraint(
       const math::Vec2d& start_pt,
       const math::Vec2d& end_pt);
+
+  void CheckLaneConstraints(
+      const DiscretizedTrajectory& trajectory,
+      const LeftLaneConstraints& left_lane_constraints,
+      const RightLaneConstraints& right_lane_constraints);
+
+  std::pair<Eigen::Vector3d, math::LineSegment2d> FindNeastLaneSegment(
+    const double x, const double y, 
+    const std::vector<std::pair<Eigen::Vector3d, math::LineSegment2d>>& lane_segs);
  
  private:
   CorridorConfig config_;
