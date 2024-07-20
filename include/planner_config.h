@@ -17,9 +17,14 @@ namespace planning {
 
 struct Weights {
   double jerk = 10.0;
-  double delta_rate = 1.0;
-  double x_target = 1.0;
-  double y_target = 10.0;
+  double delta_rate = 10.0;
+
+  double x_target = 1e-1;
+  double y_target = 1e-1;
+  double theta = 1e0;
+  double v = 1e-6;
+  double a = 1e-6;
+  double delta = 1e-9;
 };
 
 struct IlqrConfig {
@@ -28,7 +33,7 @@ struct IlqrConfig {
   double t = 100.0;
   double t_rate = 10.0;
   Weights weights;
-  int max_iter_num = 10;
+  int max_iter_num = 20;
 
   double abs_cost_tol = 1e-3;
   double rel_cost_tol = 1e-3;

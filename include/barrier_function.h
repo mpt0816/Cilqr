@@ -40,8 +40,8 @@ class BarrierFunction {
 
  private:
   double param_;
-  double q1_ = 1.0;
-  double q2_ = 1.0;
+  double q1_ = 0.5;
+  double q2_ = 2.5;
 };
 
 } // namespace planning

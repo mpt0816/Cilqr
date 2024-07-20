@@ -52,13 +52,17 @@ class IlqrOptimizer {
       const std::vector<State>& states,
       const std::vector<Control>& controls,
       std::vector<Eigen::Matrix<double, kControlNum, kStateNum>>* const Ks,
-      std::vector<Eigen::Matrix<double, kControlNum, 1>>* const ks);
+      std::vector<Eigen::Matrix<double, kControlNum, 1>>* const ks,
+      std::vector<Eigen::Matrix<double, kControlNum, 1>>* const Qus,
+    std::vector<Eigen::Matrix<double, kControlNum, kControlNum>>* const Quus);
 
   void Forward(
       std::vector<State>* const states,
       std::vector<Control>* const controls,
       const std::vector<Eigen::Matrix<double, kControlNum, kStateNum>>& Ks,
-      const std::vector<Eigen::Matrix<double, kControlNum, 1>>& ks);
+      const std::vector<Eigen::Matrix<double, kControlNum, 1>>& ks,
+      const std::vector<Eigen::Matrix<double, kControlNum, 1>>& Qus,
+      const std::vector<Eigen::Matrix<double, kControlNum, kControlNum>>& Quus);
 
   double TotalCost(
       const std::vector<State>& states,
@@ -133,6 +137,8 @@ class IlqrOptimizer {
   double delta_t_;
   int num_of_knots_;
   double disc_radius_;
+
+  double rho_ = 1e-10;
 
   IlqrConfig config_;
   VehicleParam vehicle_param_;

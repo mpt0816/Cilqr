@@ -118,6 +118,20 @@ bool TrajectoryPlanner::Plan(const StartState& state, DiscretizedTrajectory& res
   visualization::PlotTrajectory(opti_x, opti_y, opti_v, config_.vehicle.max_velocity, 0.1, visualization::Color::Green, 1, "Optimized Trajectory");
   visualization::Trigger();
 
+  // for (int i = 0; i < iter_trajs.size(); ++i) {
+    std::vector<double> tem_opti_x, tem_opti_y, tem_opti_v;
+    for(int j = 0; j < nfe; j++) {
+      tem_opti_x.push_back(iter_trajs[0].trajectory()[j].x);
+      tem_opti_y.push_back(iter_trajs[0].trajectory()[j].y);
+      tem_opti_v.push_back(iter_trajs[0].trajectory()[j].velocity);
+    }
+    visualization::PlotTrajectory(tem_opti_x, tem_opti_y, tem_opti_v, config_.vehicle.max_velocity, 0.1, visualization::Color::Yellow, 1, "guess Optimized Trajectory");
+    visualization::Trigger();
+  //   ros::Duration(0.1 * 5).sleep();
+  //   break;
+  // }
+  
+
   result = DiscretizedTrajectory(result_data);
   convex_polygons_ = convex_polygons;
 
