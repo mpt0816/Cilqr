@@ -30,13 +30,12 @@ add_message_files(
 generate_messages(DEPENDENCIES std_msgs geometry_msgs)
 
 catkin_package(
-  INCLUDE_DIRS include
   LIBRARIES planning
   CATKIN_DEPENDS roscpp message_runtime
 )
 
 include_directories(
-  include
+  ${CMAKE_CURRENT_SOURCE_DIR}
   ${catkin_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIR}
 )
@@ -54,25 +53,32 @@ if(WITH_HSL)
 endif()
 
 set(SRC
-  src/planning_node.cc
-  src/math/aabox2d.cpp
-  src/math/box2d.cpp
-  src/math/line_segment2d.cpp
-  src/math/math_utils.cpp
-  src/math/polygon2d.cpp
-  src/math/vec2d.cpp
-  src/trajectory_planner.cpp
-  src/discretized_trajectory.cpp
-  src/environment.cpp
-  src/dp_planner.cpp
-  src/visualization/plot.cpp
-  src/visualization/color.cpp
-  src/corridor.cc
-  src/ilqr_optimizer.cc
-  src/vehicle_model.cc
-  src/discrete_points_math.cc)
+  algorithm/planning_node.cc
 
-add_executable(${PROJECT_NAME}_node  src/main.cc ${SRC})
+  algorithm/math/aabox2d.cpp
+  algorithm/math/box2d.cpp
+  algorithm/math/line_segment2d.cpp
+  algorithm/math/math_utils.cpp
+  algorithm/math/polygon2d.cpp
+  algorithm/math/vec2d.cpp
+  algorithm/math/linear_quadratic_regulator.cc
+
+  algorithm/planner/dp_planner.cpp
+  algorithm/planner/trajectory_planner.cpp
+
+  algorithm/utils/discretized_trajectory.cpp
+  algorithm/utils/environment.cpp
+  algorithm/utils/discrete_points_math.cc
+  
+  algorithm/visualization/plot.cpp
+  algorithm/visualization/color.cpp
+
+  algorithm/ilqr/corridor.cc
+  algorithm/ilqr/ilqr_optimizer.cc
+  algorithm/ilqr/vehicle_model.cc
+  algorithm/ilqr/tracker.cc)
+
+add_executable(${PROJECT_NAME}_node  main.cc ${SRC})
 
 set_target_properties(${PROJECT_NAME}_node PROPERTIES OUTPUT_NAME node PREFIX "")
 
