@@ -52,6 +52,7 @@ void SolveLQRProblem(const Matrix &A, const Matrix &B, const Matrix &Q,
         (AT * P * B + M) * (R + BT * P * B).inverse() * (BT * P * A + MT) + Q;
     // check the difference between P and P_next
     diff = fabs((P_next - P).maxCoeff());
+    // std::cout << "diff: " << diff << std::endl;
     P = P_next;
   }
 
@@ -61,9 +62,9 @@ void SolveLQRProblem(const Matrix &A, const Matrix &B, const Matrix &Q,
               << diff
               << std::endl;
   } else {
-    std::cout << "LQR solver converged at iteration: " << num_iteration
-              << ", max consecutive result diff.: " << diff
-              << std::endl;
+    // std::cout << "LQR solver converged at iteration: " << num_iteration
+    //           << ", max consecutive result diff.: " << diff
+    //           << std::endl;
   }
   *ptr_K = (R + BT * P * B).inverse() * (BT * P * A + MT);
 }

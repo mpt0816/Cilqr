@@ -2,6 +2,8 @@
 
 #include <iostream>
 
+#include "algorithm/math/math_utils.h"
+
 namespace planning {
 
 PlanningNode::PlanningNode(const ros::NodeHandle& nh) : nh_(nh) {

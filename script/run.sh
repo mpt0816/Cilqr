@@ -1,5 +1,9 @@
 #!/bin/bash
 
+rm -rf ./core
+
+echo "" > log.txt
+
 sudo sysctl -p
 core_dir=/home/mpt/catkin_ws/core
 [ ! -d ${core_dir} ] && mkdir -p ${core_dir}

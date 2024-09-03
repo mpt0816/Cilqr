@@ -15,6 +15,7 @@
 
 #include "algorithm/visualization/plot.h"
 #include "algorithm/utils/timer.h"
+#include "algorithm/visualization/figure_plot.h"
 
 namespace planning {
 
@@ -35,6 +36,9 @@ bool TrajectoryPlanner::Plan(
   utils::time dp_end_time = utils::Time();
   double dp_time_cost = utils::Duration(dp_start_time, dp_end_time);
   std::cout << "DP time cost: " << dp_time_cost << std::endl;
+
+  visualization::FigurePlot figure_plot;
+  // figure_plot.Plot(coarse_trajectory);
    
   CorridorConstraints corridor_constraints;
   ConvexPolygons convex_polygons;
@@ -88,6 +92,10 @@ bool TrajectoryPlanner::Plan(
     ROS_ERROR("ilqr failed");
     return false;
   }
+
+  // figure_plot.Plot(coarse_trajectory, opt_trajectory);
+  figure_plot.Plot(coarse_trajectory, iter_trajs);
+
   // opt_trajectory = coarse_trajectory;
   std::vector<double> opti_x, opti_y, opti_v;
   Trajectory result_data;
@@ -103,7 +111,7 @@ bool TrajectoryPlanner::Plan(
     tp.y = opt_trajectory.trajectory()[i].y;
     tp.theta = opt_trajectory.trajectory()[i].theta;
     tp.velocity = opt_trajectory.trajectory()[i].velocity;
-    tp.kappa = std::tan(opt_trajectory.trajectory()[i].theta) / config_.vehicle.wheel_base;
+    tp.kappa = std::tan(opt_trajectory.trajectory()[i].delta) / config_.vehicle.wheel_base;
     tp.a = opt_trajectory.trajectory()[i].a;
     tp.jerk = opt_trajectory.trajectory()[i].jerk;
     tp.delta = opt_trajectory.trajectory()[i].delta;

@@ -119,6 +119,8 @@ void IlqrOptimizer::InitGuess(
                           opt_trajectory.trajectory()[i].velocity, 
                           opt_trajectory.trajectory()[i].a, 
                           opt_trajectory.trajectory()[i].delta;
+    // std::cout << "ilqr delta: " << opt_trajectory.trajectory()[i].delta << std::endl;
+    // std::cout << "state delta: " << (guess_state->at(i))(5, 0) << std::endl;
 
     guess_control->at(i) << opt_trajectory.trajectory()[i].jerk,
                             opt_trajectory.trajectory()[i].delta_rate;
@@ -167,7 +169,7 @@ void IlqrOptimizer::InitGuess(
   // for (int i = 0; i < num_of_knots_ - 1; ++i) {
   //   guess_control->at(i) = -Ks[i] * (x - goals_[i]);
   //   guess_control->at(i)(0, 0) = clamp(guess_control->at(i)(0, 0), vehicle_param_.jerk_min, vehicle_param_.jerk_max);
-  // //   guess_control->at(i)(1, 0) = clamp(guess_control->at(i)(1, 0), vehicle_param_.delta_rate_min, vehicle_param_.delta_rate_max);
+  //   guess_control->at(i)(1, 0) = clamp(guess_control->at(i)(1, 0), vehicle_param_.delta_rate_min, vehicle_param_.delta_rate_max);
   //   vehicle_model_.Dynamics(x, guess_control->at(i), &(guess_state->at(i + 1)));
   //   x = guess_state->at(i + 1);
   // }
@@ -183,7 +185,7 @@ void IlqrOptimizer::TransformGoals(
     goals_[i] << pt.x, pt.y, pt.theta, pt.velocity, pt.a, pt.delta;
     ++i;
   }
-  goals_[0] << coarse_traj.trajectory().back().x, coarse_traj.trajectory().back().y, coarse_traj.trajectory().back().theta, 10.0, 0.0, 0.0;
+  goals_[0] << start_state_.x, start_state_.y, start_state_.theta, 10.0, 0.0, 0.0;
 }
 
 void IlqrOptimizer::Optimize(
@@ -700,6 +702,8 @@ DiscretizedTrajectory IlqrOptimizer::TransformToTrajectory(
     traj[i].velocity = states[i](3, 0);
     traj[i].a = states[i](4, 0);
     traj[i].delta = states[i](5, 0);
+    traj[i].kappa = std::tan(states[i](5, 0)) / vehicle_param_.wheel_base; 
+    // std::cout << "TransformToTrajectory delta: " << states[i](5, 0) << std::endl;
     if (i < num_of_knots_ - 1) {
       traj[i].jerk = controls[i](0, 0);
       traj[i].delta_rate = controls[i](1, 0);

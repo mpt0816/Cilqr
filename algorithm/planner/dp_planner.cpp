@@ -251,6 +251,29 @@ bool DpPlanner::Plan(
   DiscretePointsMath::ComputePathProfile(
       config_.delta_t, xy_points, 
       &headings, &accumulated_s, &speeds, &accelerations, &kappas);
+  
+  for (int i = 0; i < xy_points.size(); ++i) {
+    // double t = config_.delta_t * i;
+    // data[i].x = 10.0 * t;
+    // data[i].y = 50 * std::sin(0.1 * t);
+    // data[i].theta = std::atan2(50 * 0.1 * std::cos(0.1 * t), 10.0);
+    // double dx = 10.0;
+    // double dy = 50 * 0.1 * std::cos(0.1 * t);
+    // double ddx = 0.0;
+    // double ddy = -50 * 0.1 * 0.1 * std::sin(0.1 * t);
+    // data[i].kappa = (dx * ddy - dy * ddx) / std::pow((dx * dx + dy * dy), 1.5);
+    // data[i].delta = std::atan(data[i].kappa * config_.vehicle.wheel_base);
+    // data[i].velocity = 10.0;
+    // data[i].a = 0.0;
+
+    data[i].kappa = kappas[i];
+    data[i].delta = std::atan(data[i].kappa * config_.vehicle.wheel_base);
+    data[i].velocity = speeds[i];
+    data[i].a = accelerations[i];
+
+    data[i].jerk = 0.0;
+    data[i].delta_rate = 0.0;
+  }
 
   result = DiscretizedTrajectory(data);
 

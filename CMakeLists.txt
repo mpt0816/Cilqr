@@ -16,6 +16,14 @@ find_package(catkin REQUIRED COMPONENTS
 
 find_package(Eigen3 REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(PythonLibs 2.7)
+
+#指定库路径
+#file(GLOB_RECURSE Python2.7_LIB "/usr/lib/python2.7/config-x86_64-linux-gnu/*.so")
+#指定头文件路径
+set(Python2.7_INLCUDE_DIRS 
+  "/usr/include/python2.7"
+  )
 
 add_message_files(
   FILES
@@ -38,6 +46,7 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${catkin_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIR}
+  ${Python2.7_INLCUDE_DIRS}
 )
 
 option(WITH_HSL "Compile solver with coinhsl" ON)
@@ -87,4 +96,5 @@ add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catk
 target_link_libraries(${PROJECT_NAME}_node
   ${catkin_LIBRARIES}
   ${OpenCV_LIBS}
+  ${PYTHON_LIBRARIES}
 )

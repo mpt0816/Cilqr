@@ -54,14 +54,14 @@ class VehicleParam {
   /**
    * Upper bound of |jerk(t)| (m/s^3)
    */
-  double jerk_min = -1.0;
-  double jerk_max = 1.0;
+  double jerk_min = -10.0;
+  double jerk_max = 10.0;
 
   double delta_min = -40.0 / 180 * M_PI;
   double delta_max = 40.0 / 180 * M_PI;
 
-  double delta_rate_min = -0.2;
-  double delta_rate_max = 0.2;
+  double delta_rate_min = delta_min / 3.0;
+  double delta_rate_max = delta_max / 3.0;
 
   /**
    * Upper bound of |\phi(t)| (rad)

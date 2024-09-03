@@ -51,6 +51,11 @@ class Tracker {
       DiscretizedTrajectory* const opt_trajectory);
 
  private:
+  bool lqr(
+      const TrajectoryPoint& start_state,
+      const DiscretizedTrajectory& coarse_traj,
+      DiscretizedTrajectory* const opt_trajectory);
+
   std::pair<State, State> CalcaulateInitState(
       const TrajectoryPoint& current_state);
 
@@ -66,8 +71,6 @@ class Tracker {
   void InitMatrix();
 
   VehicleState vehicle_mode(
-      // const double x,
-      // const double y,
       const double theta, 
       const double v, 
       const double delta, 
@@ -81,14 +84,6 @@ class Tracker {
     dot_x.v = a;
     dot_x.a = j;
     dot_x.delta = delta_rate;
-    // std::cout << "vehicle_mode output: "
-    //           << dot_x.x << ", "
-    //           << dot_x.y << ", "
-    //           << dot_x.theta << ", "
-    //           << dot_x.v << ", "
-    //           << dot_x.a << ", "
-    //           << dot_x.delta << std::endl;
-              
     return dot_x;
   };
 

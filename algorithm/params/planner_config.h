@@ -16,23 +16,28 @@
 namespace planning {
 
 struct LateralTrackerConfig {
-  double weight_l = 10.0;
-  double weight_theta = 1.0;
-  double weight_delta = 1.0;
-  double weight_delta_rate = 100.0;
+  double weight_l = 1e-1;
+  double weight_theta = 1e-12;
+  double weight_delta = 1e-12;
+  double weight_delta_rate = 0.1;
+
+  double preview_time = 0.2;
 };
 
 struct LongitudinalTrackerConfig {
-  double weight_s = 10.0;
-  double weight_v = 1.0;
-  double weight_a = 1.0;
-  double weight_j = 100.0;
+  double weight_s = 1e-1;
+  double weight_v = 1e-12;
+  double weight_a = 1e-12;
+  double weight_j = 0.1;
+
+  double preview_time = 0.0;
 };
 
 struct TrackerConfig {
-  double dt = 0.01;
-  double tolerance = 0.0001;
-  uint max_num_iteration = 100;
+  double sumulation_dt = 0.01;
+  double dt = 0.1;
+  double tolerance = 0.01;
+  uint max_num_iteration = 150;
   LateralTrackerConfig lateral_config;
   LongitudinalTrackerConfig longitudinal_config;
 };
