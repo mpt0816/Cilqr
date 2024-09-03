@@ -4,15 +4,9 @@
 #include <cmath>
 #include <iostream>
 
-namespace planning {
+#include "algorithm/math/math_utils.h"
 
-double VehicleModel::NornmalizeAngle(const double angle) {
-  double a = std::fmod(angle + M_PI, 2.0 * M_PI);
-  if (a < 0.0) {
-    a += 2.0 * M_PI;
-  }
-  return angle;
-}
+namespace planning {
 
 VehicleModel::VehicleModel(
     const IlqrConfig& config,
@@ -48,8 +42,8 @@ void VehicleModel::DynamicsJacbian(
   //       0.0, delta_t_;
 
   double v = state(3, 0);
-  double theta = NornmalizeAngle(state(2, 0));
-  double delta = NornmalizeAngle(state(5, 0));
+  double theta = math::NormalizeAngle(state(2, 0));
+  double delta = math::NormalizeAngle(state(5, 0));
   
   double a = state(4, 0);
   double jerk = control(0, 0);
@@ -94,6 +88,8 @@ void VehicleModel::DynamicsJacbian(
 void VehicleModel::Dynamics(
     const State& state, const Control& control,
     State* const next_state) {
+  // std::cout << "current state: " << state << std::endl;
+  // std::cout << "control: " << control << std::endl;
   // SystemMatrix A;
   // InputMatrix B;
   // DynamicsJacbian(state, control, &A, &B);
@@ -117,16 +113,19 @@ void VehicleModel::Dynamics(
   State mid_state = state + 0.5 * delta_t_ * k1;
   State k2 = DynamicsContinuous(mid_state, control);
   *next_state = state + delta_t_ * k2;
-  (*next_state)(2, 0) = NornmalizeAngle((*next_state)(2, 0));
-  (*next_state)(5, 0) = NornmalizeAngle((*next_state)(5, 0));
+  (*next_state)(2, 0) = math::NormalizeAngle((*next_state)(2, 0));
+  (*next_state)(5, 0) = math::NormalizeAngle((*next_state)(5, 0));
+
+  // std::cout << "next_state: " << *next_state << std::endl;
+  // std::cout <<"**************************************" << std::endl;
 }
 
 State VehicleModel::DynamicsContinuous(
     const State& state, const Control& control) {
-  double theta = NornmalizeAngle(state(2, 0));
+  double theta = math::NormalizeAngle(state(2, 0));
   double v = state(3, 0);
   double a = state(4, 0);
-  double delta = NornmalizeAngle(state(5, 0));
+  double delta = math::NormalizeAngle(state(5, 0));
   
   State res;
   res << v * std::cos(theta),

@@ -37,7 +37,6 @@ class VehicleModel {
 
   
  private:
-  double NornmalizeAngle(const double angle);
 
   State DynamicsContinuous(
       const State& state, const Control& control);

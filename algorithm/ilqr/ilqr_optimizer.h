@@ -135,14 +135,6 @@ class IlqrOptimizer {
 
   void NormalizeHalfPlane();
 
-  bool NornmalizeAngle(const double angle) {
-    double a = std::fmod(angle + M_PI, 2.0 * M_PI);
-    if (a < 0.0) {
-      a += 2.0 * M_PI;
-    }
-    return angle;
-  };
-
  private:
   double horizon_;
   double delta_t_;
