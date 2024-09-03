@@ -135,6 +135,14 @@ class IlqrOptimizer {
 
   void NormalizeHalfPlane();
 
+  bool NornmalizeAngle(const double angle) {
+    double a = std::fmod(angle + M_PI, 2.0 * M_PI);
+    if (a < 0.0) {
+      a += 2.0 * M_PI;
+    }
+    return angle;
+  };
+
  private:
   double horizon_;
   double delta_t_;
@@ -152,7 +160,6 @@ class IlqrOptimizer {
   
   TrajectoryPoint start_state_;
   std::vector<State> goals_;
-  State init_state_;
 
   CorridorConstraints shrinked_corridor_;
   LaneConstraints shrinked_left_lane_cons_;

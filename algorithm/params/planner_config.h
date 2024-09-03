@@ -43,15 +43,15 @@ struct TrackerConfig {
 };
 
 struct Weights {
-  double jerk = 10.0;
-  double delta_rate = 10.0;
+  double jerk = 1e-1;
+  double delta_rate = 1e-1;
 
   double x_target = 1e-1;
   double y_target = 1e-1;
-  double theta = 1e0;
-  double v = 1e-6;
-  double a = 1e-6;
-  double delta = 1e-9;
+  double theta = 1e-3;
+  double v = 0.0;
+  double a = 0.0;
+  double delta = 0.0;
 };
 
 struct IlqrConfig {

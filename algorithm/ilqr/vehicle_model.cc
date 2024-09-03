@@ -7,10 +7,10 @@
 namespace planning {
 
 double VehicleModel::NornmalizeAngle(const double angle) {
-  // double a = std::fmod(angle + M_PI, 2.0 * M_PI);
-  // if (a < 0.0) {
-  //   a += 2.0 * M_PI;
-  // }
+  double a = std::fmod(angle + M_PI, 2.0 * M_PI);
+  if (a < 0.0) {
+    a += 2.0 * M_PI;
+  }
   return angle;
 }
 
@@ -117,6 +117,8 @@ void VehicleModel::Dynamics(
   State mid_state = state + 0.5 * delta_t_ * k1;
   State k2 = DynamicsContinuous(mid_state, control);
   *next_state = state + delta_t_ * k2;
+  (*next_state)(2, 0) = NornmalizeAngle((*next_state)(2, 0));
+  (*next_state)(5, 0) = NornmalizeAngle((*next_state)(5, 0));
 }
 
 State VehicleModel::DynamicsContinuous(

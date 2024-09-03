@@ -43,7 +43,7 @@ class VehicleParam {
   /**
    * Upper bound of v(t) (m/s)
    */
-  double max_velocity = 12.0;
+  double max_velocity = 20.0;
 
   /**
    * Lower and upper bounds of a(t) (m/s^2)

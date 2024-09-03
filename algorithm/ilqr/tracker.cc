@@ -207,6 +207,9 @@ bool Tracker::lqr(
     return false;
   }
 
+  std::cout << "coarse traj pts size: " << follow_trajectory_.trajectory().size() << std::endl;
+  std::cout << "init guess traj pts size: " << trajectory.size() << std::endl;
+
   *opt_trajectory = DiscretizedTrajectory(trajectory);
   return true;
 }

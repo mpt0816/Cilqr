@@ -58,12 +58,6 @@ bool IlqrOptimizer::Plan(
     DiscretizedTrajectory* const opt_trajectory,
     std::vector<DiscretizedTrajectory>* const iter_trajs) {
   start_state_ = start_state;
-  init_state_ << start_state_.x,
-                 start_state_.y,
-                 start_state_.theta,
-                 start_state_.velocity,
-                 0.0,
-                 0.0;
   
   if (opt_trajectory == nullptr || iter_trajs == nullptr) {
     return false;
@@ -80,6 +74,8 @@ bool IlqrOptimizer::Plan(
     ROS_ERROR("ilqr input coarse_traj error");
     return false;
   }
+
+  std::cout << "num_of_knots_: " << num_of_knots_ << std::endl;
 
   TransformGoals(coarse_traj);
 
@@ -119,8 +115,6 @@ void IlqrOptimizer::InitGuess(
                           opt_trajectory.trajectory()[i].velocity, 
                           opt_trajectory.trajectory()[i].a, 
                           opt_trajectory.trajectory()[i].delta;
-    // std::cout << "ilqr delta: " << opt_trajectory.trajectory()[i].delta << std::endl;
-    // std::cout << "state delta: " << (guess_state->at(i))(5, 0) << std::endl;
 
     guess_control->at(i) << opt_trajectory.trajectory()[i].jerk,
                             opt_trajectory.trajectory()[i].delta_rate;
@@ -132,47 +126,6 @@ void IlqrOptimizer::InitGuess(
                          opt_trajectory.trajectory().back().velocity, 
                          opt_trajectory.trajectory().back().a, 
                          opt_trajectory.trajectory().back().delta;
-  
-  // std::vector<Eigen::Matrix<double, kControlNum, kStateNum>> Ks(num_of_knots_ - 1);
-  // Eigen::Matrix<double, kStateNum, kStateNum> Q = Eigen::MatrixXd::Zero(6, 6);
-  // Q(0, 0) = 1e-1;
-  // Q(1, 1) = 1e-1;
-  // Q(2, 2) = 1e-0;
-  // Q(3, 3) = 1.0e-6;
-  // Q(4, 4) = 1.0e-6;
-  // Q(5, 5) = 1.0e-9;
-
-  // // std::cout << "Q:" << Q << std::endl;
-
-  // Eigen::Matrix<double, kControlNum, kControlNum> R;
-  // R(0, 0) = 10;
-  // R(1, 1) = 10;
-  // Eigen::Matrix<double, kStateNum, kStateNum> P = Q;
-  
-  // SystemMatrix A;
-  // InputMatrix B;
-  // Control control;
-  // control << 0.0, 0.0;
-  // for (int i = num_of_knots_ - 2; i >= 0; --i) {
-  //   vehicle_model_.DynamicsJacbian(goals_[i], control, &A, &B);
-  //   Ks[i] = (R + B.transpose() * P * B).inverse() * (B.transpose() * P * A);
-  //   P = Q + A.transpose() * P * (A - B * Ks[i]);
-  // }
-
-  // auto clamp = [](const double x, const double min, const double max) {
-  //   return std::fmin(max, std::fmax(x, min));
-  // };
-  
-  // State x;
-  // x << 0.0, 0.0, 0.0, 10.0, 0.0, 0.0;
-  // guess_state->front() = x;
-  // for (int i = 0; i < num_of_knots_ - 1; ++i) {
-  //   guess_control->at(i) = -Ks[i] * (x - goals_[i]);
-  //   guess_control->at(i)(0, 0) = clamp(guess_control->at(i)(0, 0), vehicle_param_.jerk_min, vehicle_param_.jerk_max);
-  //   guess_control->at(i)(1, 0) = clamp(guess_control->at(i)(1, 0), vehicle_param_.delta_rate_min, vehicle_param_.delta_rate_max);
-  //   vehicle_model_.Dynamics(x, guess_control->at(i), &(guess_state->at(i + 1)));
-  //   x = guess_state->at(i + 1);
-  // }
 }
 
 void IlqrOptimizer::TransformGoals(
@@ -185,7 +138,7 @@ void IlqrOptimizer::TransformGoals(
     goals_[i] << pt.x, pt.y, pt.theta, pt.velocity, pt.a, pt.delta;
     ++i;
   }
-  goals_[0] << start_state_.x, start_state_.y, start_state_.theta, 10.0, 0.0, 0.0;
+  goals_[0] << start_state_.x, start_state_.y, start_state_.theta, start_state_.velocity, 0.0, 0.0;
 }
 
 void IlqrOptimizer::Optimize(
@@ -298,13 +251,14 @@ void IlqrOptimizer::Forward(
   std::vector<Control> new_controls = *controls;
   double cost = TotalCost(*states, *controls);
   std::cout << "===============Forward==============" << std::endl;
-  std::cout << "sates addr: " << states << std::endl;
   std::cout << "old cost: " << cost << std::endl;
   double alpha = 1.0;
   while (alpha > 1e-8) {
     State x = goals_.front();
-    for (int i = 0; i < num_of_knots_ - 2; ++i) {
-      new_controls[i] = new_controls[i] + Ks[i] * (x - states->at(i)) + alpha * ks[i]; 
+    new_state.front() = x;
+    for (int i = 0; i < num_of_knots_ - 1; ++i) {
+      new_controls[i] = new_controls[i] + Ks[i] * (x - states->at(i)) + alpha * ks[i];
+      // new_controls[i](1, 0) = NornmalizeAngle(new_controls[i](1, 0)); 
       // std::cout << "control: " << controls->at(i) << std::endl;
       vehicle_model_.Dynamics(x, new_controls[i], &x);
       new_state.at(i + 1) = x;
@@ -312,7 +266,7 @@ void IlqrOptimizer::Forward(
     // *states = new_state;
 
     double new_cost = TotalCost(new_state, *controls);
-    std::cout << "new_cost cost: " << new_cost << std::endl;
+    std::cout << "new cost: " << new_cost << std::endl;
     double delta_v = 0.0;
     for (int i = 0; i < num_of_knots_ - 1; ++i) {
       delta_v += (0.5 * alpha * alpha * ks[i].transpose() * Quus[i] * ks[i] + alpha * ks[i].transpose() * Qus[i])(0 ,0);
@@ -344,15 +298,15 @@ double IlqrOptimizer::TotalCost(
     const std::vector<State>& states,
     const std::vector<Control>& controls) {
   double j_cost = JCost(states, controls);
-  // std::cout << "j_cost: " << j_cost << std::endl;
+  std::cout << "j_cost: " << j_cost << std::endl;
   double dynamics_cost = DynamicsCost(states, controls);
   // std::cout << "dynamics_cost: " << dynamics_cost << std::endl;
-  // double corridor_cost = CorridorCost(states);
+  double corridor_cost = CorridorCost(states);
   // std::cout << "corridor_cost: " << corridor_cost << std::endl;
-  // double lane_boundary_cost = LaneBoundaryCost(states);
+  double lane_boundary_cost = LaneBoundaryCost(states);
   // std::cout << "lane_boundary_cost: " << lane_boundary_cost << std::endl;
-  // return j_cost + dynamics_cost + corridor_cost + lane_boundary_cost;
-  return j_cost + dynamics_cost;
+  return j_cost + dynamics_cost + corridor_cost + lane_boundary_cost;
+  // return j_cost + dynamics_cost;
 }
 
 void IlqrOptimizer::ShrinkConstraints(
@@ -438,26 +392,36 @@ double IlqrOptimizer::JCost(
 double IlqrOptimizer::DynamicsCost(
      const std::vector<State>& states,
      const std::vector<Control>& controls) {
-  double cost = 0.0;
+  double x_cost = 0.0;
   for (int i = 0; i < num_of_knots_; ++i) {
-    cost += state_barrier_.value(-states[i](3, 0));
-    cost += state_barrier_.value(states[i](3, 0) - vehicle_param_.max_velocity);
-    cost += state_barrier_.value(states[i](4, 0) - vehicle_param_.max_acceleration);
-    cost += state_barrier_.value(vehicle_param_.min_acceleration - states[i](4, 0));
-    cost += state_barrier_.value(states[i](5, 0) - vehicle_param_.delta_max);
-    cost += state_barrier_.value(vehicle_param_.delta_min - states[i](5, 0));
+    x_cost += state_barrier_.value(-states[i](3, 0));
+    x_cost += state_barrier_.value(states[i](3, 0) - vehicle_param_.max_velocity);
+    x_cost += state_barrier_.value(states[i](4, 0) - vehicle_param_.max_acceleration);
+    x_cost += state_barrier_.value(vehicle_param_.min_acceleration - states[i](4, 0));
+    x_cost += state_barrier_.value(states[i](5, 0) - vehicle_param_.delta_max);
+    x_cost += state_barrier_.value(vehicle_param_.delta_min - states[i](5, 0));
+    std::cout << "states: " << states[i] << std::endl;
+    std::cout << "dynamic v min cost: " << state_barrier_.value(-states[i](3, 0)) << std::endl;
+    std::cout << "dynamic v max cost: " << state_barrier_.value(states[i](3, 0) - vehicle_param_.max_velocity) << std::endl;
+    std::cout << "dynamic a max cost: " << state_barrier_.value(states[i](4, 0) - vehicle_param_.max_acceleration) << std::endl;
+    std::cout << "dynamic a min cost: " << state_barrier_.value(vehicle_param_.min_acceleration - states[i](4, 0)) << std::endl;
+    std::cout << "dynamic delta max cost: " << state_barrier_.value(states[i](5, 0) - vehicle_param_.delta_max) << std::endl;
+    std::cout << "dynamic delta min cost: " << state_barrier_.value(vehicle_param_.delta_min - states[i](5, 0)) << std::endl;
   } 
 
-  // std::cout << "DynamicsCost x: " << cost << std::endl;
+  std::cout << "DynamicsCost x: " << x_cost << std::endl;
+
+  double u_cost = 0.0;
 
   for (int i = 0; i < num_of_knots_ - 1; ++i) {
-    cost += control_barrier_.value(controls[i](0, 0) - vehicle_param_.jerk_max);
-    cost += control_barrier_.value(vehicle_param_.jerk_min - controls[i](0, 0));
-    cost += control_barrier_.value(controls[i](1, 0) - vehicle_param_.delta_rate_max);
-    cost += control_barrier_.value(vehicle_param_.delta_rate_min - controls[i](1, 0));
+    u_cost += control_barrier_.value(controls[i](0, 0) - vehicle_param_.jerk_max);
+    u_cost += control_barrier_.value(vehicle_param_.jerk_min - controls[i](0, 0));
+    u_cost += control_barrier_.value(controls[i](1, 0) - vehicle_param_.delta_rate_max);
+    u_cost += control_barrier_.value(vehicle_param_.delta_rate_min - controls[i](1, 0));
   }
+  std::cout << "DynamicsCost u: " << u_cost << std::endl;
 
-  return cost;
+  return x_cost + u_cost;
 }
 
 double IlqrOptimizer::CorridorCost(
@@ -545,8 +509,8 @@ void IlqrOptimizer::CostJacbian(
               2.0 * config_.weights.delta_rate * control(1, 0);
   
   DynamicsConsJacbian(state, control, cost_Jx, cost_Ju);
-  // CorridorConsJacbian(index, state, cost_Jx);
-  // LaneBoundaryConsJacbian(state, cost_Jx);
+  CorridorConsJacbian(index, state, cost_Jx);
+  LaneBoundaryConsJacbian(state, cost_Jx);
 }
 
 void IlqrOptimizer::CostHessian(
@@ -564,8 +528,8 @@ void IlqrOptimizer::CostHessian(
               0.0, 2.0 * config_.weights.delta_rate;
 
   DynamicsConsHessian(state, control, cost_Hx, cost_Hu);
-  // CorridorConsHessian(index, state, cost_Hx);
-  // LaneBoundaryConsHessian(state, cost_Hx);
+  CorridorConsHessian(index, state, cost_Hx);
+  LaneBoundaryConsHessian(state, cost_Hx);
 }
 
 void IlqrOptimizer::DynamicsConsJacbian(

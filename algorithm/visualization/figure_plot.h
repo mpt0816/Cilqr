@@ -186,8 +186,8 @@ class FigurePlot {
     } else {
       plt::figure(2);
     }
-    plt::named_plot("x_y_1", x, y, "k-");
-    plt::named_plot("x_y_2", x_2, y_2, "k--");
+    plt::named_plot("x-y_1", x, y, "k-");
+    plt::named_plot("x-y_2", x_2, y_2, "k--");
     plt::xlabel("x(m)"); plt::ylabel("y(m)");
     plt::legend();
 
@@ -456,7 +456,6 @@ class FigurePlot {
  private:
   std::string Markers(const int num) {
     int index = std::max(0, std::min(num, static_cast<int>(markers_.size() - 1)));
-    std::cout << "num: " << num <<  ", index: " << index << std::endl;
     return markers_[index];
   }
 
