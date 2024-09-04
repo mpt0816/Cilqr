@@ -11,6 +11,19 @@
 
 namespace planning {
 
+struct Cost {
+  double total_cost = 0.0;
+  double target_cost = 0.0;
+  double dynamic_cost = 0.0;
+  double corridor_cost = 0.0;
+  double lane_boundary_cost = 0.0;
+
+  Cost(const double c0, const double c1, const double c2,
+       const double c3, const double c4)
+      : total_cost(c0), target_cost(c1), dynamic_cost(c2)
+      , corridor_cost(c3), lane_boundary_cost(c4) {}
+};
+
 class IlqrOptimizer {
  public:
   IlqrOptimizer() = default;    
@@ -31,6 +44,10 @@ class IlqrOptimizer {
       const LaneConstraints& right_lane_cons,
       DiscretizedTrajectory* const opt_trajectory,
       std::vector<DiscretizedTrajectory>* const iter_trajs);
+
+  std::vector<Cost> cost() {
+    return cost_;
+  }
 
  private:
   void CalculateDiscRadius();
@@ -158,6 +175,8 @@ class IlqrOptimizer {
   LaneConstraints shrinked_right_lane_cons_;
 
   Tracker tracker_;
+
+  std::vector<Cost> cost_;
   
 };
 

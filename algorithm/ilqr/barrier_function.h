@@ -37,7 +37,8 @@ class BarrierFunction {
       const Eigen::Matrix<double, N, 1>& dx, 
       const Eigen::Matrix<double, N, N>& ddx = Eigen::MatrixXd::Zero(N, N)) {
     // return q1_ * q2_ * std::exp(q2_ * x) * ddx + q1_ * q2_ * q2_ * std::exp(q2_ * x) * dx * dx.transpose();
-    return q1_q2_q2_ * std::exp(q2_ * x) * dx * dx.transpose();
+    // return q1_q2_q2_ * std::exp(q2_ * x) * dx * dx.transpose();
+    return q1_q2_ * std::exp(q2_ * x) * ddx + q1_q2_q2_ * std::exp(q2_ * x) * dx * dx.transpose();
   }
 
  private:

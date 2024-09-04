@@ -94,7 +94,7 @@ bool TrajectoryPlanner::Plan(
   }
 
   // figure_plot.Plot(coarse_trajectory, opt_trajectory);
-  figure_plot.Plot(coarse_trajectory, iter_trajs);
+  figure_plot.Plot(coarse_trajectory, iter_trajs, ilqr_optimizer_.cost());
 
   // opt_trajectory = coarse_trajectory;
   std::vector<double> opti_x, opti_y, opti_v;

@@ -10,14 +10,6 @@
 
 namespace planning {
 
-double NornmalizeAngle(const double angle) {
-  double a = std::fmod(angle + M_PI, 2.0 * M_PI);
-  if (a < 0.0) {
-    a += 2.0 * M_PI;
-  }
-  return a;
-}
-
 IlqrOptimizer::IlqrOptimizer(
     const IlqrConfig& config, const VehicleParam& param,
     const double horizon, const double dt) 
@@ -33,6 +25,7 @@ IlqrOptimizer::IlqrOptimizer(
   State goal = Eigen::MatrixXd::Zero(kStateNum, 1);
   goals_.resize(num_of_knots_, goal);
   CalculateDiscRadius();
+  cost_.clear();
 }
 
 void IlqrOptimizer::Init(
@@ -50,6 +43,7 @@ void IlqrOptimizer::Init(
   State goal = Eigen::MatrixXd::Zero(kStateNum, 1);
   goals_.resize(num_of_knots_, goal);
   CalculateDiscRadius();
+  cost_.clear();
 }
   
 bool IlqrOptimizer::Plan(
@@ -61,6 +55,7 @@ bool IlqrOptimizer::Plan(
     DiscretizedTrajectory* const opt_trajectory,
     std::vector<DiscretizedTrajectory>* const iter_trajs) {
   start_state_ = start_state;
+  cost_.clear();
   
   if (opt_trajectory == nullptr || iter_trajs == nullptr) {
     return false;
@@ -320,7 +315,9 @@ double IlqrOptimizer::TotalCost(
   std::cout << "corridor_cost: " << corridor_cost << std::endl;
   double lane_boundary_cost = LaneBoundaryCost(states);
   std::cout << "lane_boundary_cost: " << lane_boundary_cost << std::endl;
-  return j_cost + dynamics_cost + corridor_cost + lane_boundary_cost;
+  double total_cost = j_cost + dynamics_cost + corridor_cost + lane_boundary_cost;
+  cost_.push_back(Cost(total_cost, j_cost, dynamics_cost, corridor_cost, lane_boundary_cost));
+  return total_cost;
   // return j_cost + dynamics_cost;
 }
 

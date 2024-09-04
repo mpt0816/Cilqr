@@ -10,6 +10,7 @@
 
 #include "algorithm/utils/discretized_trajectory.h"
 #include "algorithm/params/vehicle_param.h"
+#include "algorithm/ilqr/ilqr_optimizer.h"
 
 namespace plt = matplotlibcpp;
 
@@ -265,6 +266,7 @@ class FigurePlot {
 
   void Plot(const DiscretizedTrajectory& d_traj,
             const std::vector<DiscretizedTrajectory>& d_trajs,
+            const std::vector<Cost>& cost,
             const bool sub_plot = true) {
     if (d_traj.trajectory().empty() || 
         d_trajs.empty() ||
@@ -448,6 +450,36 @@ class FigurePlot {
     plt::named_plot("delta-rate_min", t, delta_r_min, "r-");
     plt::named_plot("delta-rate_max", t, delta_r_max, "r-");
     plt::xlabel("t(s)"); plt::ylabel("delta_rate(rad/s)");
+    plt::legend();
+
+    std::vector<int> iter_num;
+    std::vector<double> total_cost;
+    std::vector<double> target_cost;
+    std::vector<double> dynamic_cost;
+    std::vector<double> corridor_cost;
+    std::vector<double> lane_boundary_cost;
+
+    for (int i = 0; i < cost.size(); ++i) {
+      iter_num.push_back(i);
+      total_cost.push_back(cost[i].total_cost);
+      target_cost.push_back(cost[i].target_cost);
+      dynamic_cost.push_back(cost[i].dynamic_cost);
+      corridor_cost.push_back(cost[i].corridor_cost);
+      lane_boundary_cost.push_back(cost[i].lane_boundary_cost);
+    }
+
+    if (sub_plot) { 
+      plt::figure(2); 
+    } else {
+      plt::figure(9);
+    }
+
+    plt::named_plot("total_cost", iter_num, total_cost, "r-");
+    plt::named_plot("target_cost", iter_num, target_cost, "b-");
+    plt::named_plot("dynamic_cost", iter_num, dynamic_cost, "c-");
+    plt::named_plot("corridor_cost", iter_num, corridor_cost, "g-");
+    plt::named_plot("lane_boundary_cost", iter_num, lane_boundary_cost, "y-");
+    plt::xlabel("iter"); plt::ylabel("cost");
     plt::legend();
 
     plt::show();
