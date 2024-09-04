@@ -86,7 +86,8 @@ class IlqrOptimizer {
 
   double TotalCost(
       const std::vector<State>& states,
-      const std::vector<Control>& controls);
+      const std::vector<Control>& controls,
+      const bool log = false);
 
   double JCost(
       const std::vector<State>& states,

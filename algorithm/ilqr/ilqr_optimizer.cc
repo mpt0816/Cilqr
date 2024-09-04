@@ -164,7 +164,7 @@ void IlqrOptimizer::Optimize(
   InitGuess(coarse_traj, &states, &controls);
   iter_trajs->emplace_back(TransformToTrajectory(states, controls));
   
-  double cost = TotalCost(states, controls);
+  double cost = TotalCost(states, controls, true);
   std::cout << "cost: " << cost << std::endl;
   int iter = 0;
   std::vector<Eigen::Matrix<double, kControlNum, kStateNum>> Ks(num_of_knots_ - 1);
@@ -175,7 +175,7 @@ void IlqrOptimizer::Optimize(
     std::cout << "ilqr iter: " << (iter + 1) << std::endl;
     Backward(states, controls, &Ks, &ks, &Qus, &Quus);
     Forward(&states, &controls, Ks, ks, Qus, Quus);
-    double cost_curr = TotalCost(states, controls);
+    double cost_curr = TotalCost(states, controls, true);
     iter_trajs->emplace_back(TransformToTrajectory(states, controls));
     if (std::fabs(cost - cost_curr) < config_.abs_cost_tol) {
       std::cout << "ilqr converange." << std::endl;
@@ -306,7 +306,8 @@ void IlqrOptimizer::Forward(
 
 double IlqrOptimizer::TotalCost(
     const std::vector<State>& states,
-    const std::vector<Control>& controls) {
+    const std::vector<Control>& controls,
+    const bool log) {
   double j_cost = JCost(states, controls);
   std::cout << "j_cost: " << j_cost << std::endl;
   double dynamics_cost = DynamicsCost(states, controls);
@@ -316,7 +317,10 @@ double IlqrOptimizer::TotalCost(
   double lane_boundary_cost = LaneBoundaryCost(states);
   std::cout << "lane_boundary_cost: " << lane_boundary_cost << std::endl;
   double total_cost = j_cost + dynamics_cost + corridor_cost + lane_boundary_cost;
-  cost_.push_back(Cost(total_cost, j_cost, dynamics_cost, corridor_cost, lane_boundary_cost));
+  if (log) {
+    cost_.push_back(Cost(total_cost, j_cost, dynamics_cost, corridor_cost, lane_boundary_cost));
+  }
+  
   return total_cost;
   // return j_cost + dynamics_cost;
 }

@@ -43,7 +43,7 @@ class BarrierFunction {
 
  private:
   double param_;
-  double q1_ = 0.5;
+  double q1_ = 3.0;
   double q2_ = 2.5;
 
   double q1_q2_ = 0.0;
