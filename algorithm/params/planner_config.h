@@ -43,8 +43,8 @@ struct TrackerConfig {
 };
 
 struct Weights {
-  double jerk = 1e-1;
-  double delta_rate = 1e-1;
+  double jerk = 1e-2;
+  double delta_rate = 1e-2;
 
   double x_target = 1e-1;
   double y_target = 1e-1;
