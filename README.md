@@ -24,7 +24,7 @@ source devel/setup.bash
 ## 2. Example
 
 
-https://user-images.githubusercontent.com/85840949/150943617-f949d10d-c1be-424f-9530-1a21a5c67eef.mp4
+https://github.com/mpt0816/Cilqr/blob/master/resources/ilqr_trajectory.webm
 
 
 Example test case with 6 pedestrians, 3 moving vehicles and 2 static vehicles.
