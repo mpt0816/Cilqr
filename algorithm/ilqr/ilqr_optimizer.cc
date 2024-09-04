@@ -6,6 +6,7 @@
 #include <ros/ros.h>
 
 #include "algorithm/math/math_utils.h"
+#include "algorithm/utils/timer.h"
 
 namespace planning {
 
@@ -79,6 +80,7 @@ bool IlqrOptimizer::Plan(
 
   std::cout << "num_of_knots_: " << num_of_knots_ << std::endl;
 
+  utils::time ilqr_start_time = utils::Time();
   TransformGoals(coarse_traj);
 
   Optimize(start_state,
@@ -88,6 +90,9 @@ bool IlqrOptimizer::Plan(
            right_lane_cons,
            opt_trajectory,
            iter_trajs);
+  utils::time ilqr_end_time = utils::Time();
+  double ilqr_time_cost = utils::Duration(ilqr_start_time, ilqr_end_time);
+  std::cout << "ilqr time cost: " << ilqr_time_cost << std::endl;
 }
 
 void IlqrOptimizer::CalculateDiscRadius() {
@@ -108,7 +113,11 @@ void IlqrOptimizer::InitGuess(
   guess_control->resize(num_of_knots_ - 1);
 
   DiscretizedTrajectory opt_trajectory;
+  utils::time tracker_start_time = utils::Time();
   tracker_.Plan(start_state_, coarse_traj, &opt_trajectory);
+  utils::time tracker_end_time = utils::Time();
+  double tracker_time_cost = utils::Duration(tracker_start_time, tracker_end_time);
+  std::cout << "tracker time cost: " << tracker_time_cost << std::endl;
 
   for (int i = 0; i < num_of_knots_ - 1; ++i) {
     guess_state->at(i) << opt_trajectory.trajectory()[i].x, 
@@ -278,9 +287,10 @@ void IlqrOptimizer::Forward(
     std::cout << "delta_v: " << delta_v << std::endl;
     std::cout << "(cost - new_cost) / (-delta_v): " << (cost - new_cost) / (-delta_v) << std::endl;   
     // if ((cost - new_cost) / (-delta_v) < 10 && (cost - new_cost) / (-delta_v) > 1e-4) {
-    if (cost - new_cost > 0) {
+    if (cost - new_cost > math::kMathEpsilon || std::fabs(cost - new_cost) < config_.abs_cost_tol - math::kMathEpsilon) {
       *controls = new_controls;
       *states = new_state;
+      rho_ = 1e-10;
       std::cout << "break;" << std::endl;
       break;
     } else {
@@ -355,20 +365,20 @@ void IlqrOptimizer::NormalizeHalfPlane() {
 
   for (auto& corridor : shrinked_corridor_) {
     for (auto& hpoly : corridor) {
-      double norm = std::hypot(hpoly[0], hpoly[1]);
+      double norm = std::hypot(std::hypot(hpoly[0], hpoly[1]), hpoly[2]);
       hpoly = hpoly / norm;
     }
   }
 
   for (auto& cons : shrinked_left_lane_cons_) {
     auto& hpoly = cons.first;
-    double norm = std::hypot(hpoly[0], hpoly[1]);
+    double norm = std::hypot(std::hypot(hpoly[0], hpoly[1]), hpoly[2]);
     hpoly = hpoly / norm;
   }
 
   for (auto& cons : shrinked_right_lane_cons_) {
     auto& hpoly = cons.first;
-    double norm = std::hypot(hpoly[0], hpoly[1]);
+    double norm = std::hypot(std::hypot(hpoly[0], hpoly[1]), hpoly[2]);
     hpoly = hpoly / norm;
   }
 }
@@ -380,10 +390,10 @@ double IlqrOptimizer::JCost(
   for (int i = 0; i < num_of_knots_; ++i) {
     cost += config_.weights.x_target * std::pow((states[i](0, 0) - goals_[i](0, 0)), 2) +
             config_.weights.y_target * std::pow((states[i](1, 0) - goals_[i](1, 0)), 2) +
-            config_.weights.theta * std::pow((states[i](2, 0) - goals_[i](2, 0)), 2) +
-            config_.weights.v * std::pow((states[i](3, 0) - goals_[i](3, 0)), 2) +
-            config_.weights.a * std::pow((states[i](4, 0) - goals_[i](4, 0)), 2) +
-            config_.weights.delta * std::pow((states[i](5, 0) - goals_[i](5, 0)), 2);
+            config_.weights.theta * std::pow((states[i](2, 0) - goals_[i](2, 0)), 2);
+            // config_.weights.v * std::pow((states[i](3, 0) - goals_[i](3, 0)), 2) +
+            // config_.weights.a * std::pow((states[i](4, 0) - goals_[i](4, 0)), 2) +
+            // config_.weights.delta * std::pow((states[i](5, 0) - goals_[i](5, 0)), 2);
   }
 
   for (int i = 0; i < num_of_knots_ - 1; ++i) {
@@ -440,10 +450,8 @@ double IlqrOptimizer::CorridorCost(
     Constraints cons = shrinked_corridor_[i];
     for (int j = 0; j < config_.num_of_disc; ++j) {
       // std::cout << "*************************" << std::endl;
-      // double x = states[i](0, 0) + (L * (j - 0.5) - rf) * std::cos(states[i](2, 0));
-      // double y = states[i](1, 0) + (L * (j - 0.5) - rf) * std::sin(states[i](2, 0));
-      double x = states[i](0, 0);
-      double y = states[i](1, 0);
+      double x = states[i](0, 0) + (L * (j - 0.5) - rf) * std::cos(states[i](2, 0));
+      double y = states[i](1, 0) + (L * (j - 0.5) - rf) * std::sin(states[i](2, 0));
       for (const auto& c : cons) {
         // std::cout << "x, y: " << x << ", " << y << std::endl;
         // std::cout << "plane: " << c[0] << ", " << c[1] << ", " << c[2] << std::endl;
@@ -469,10 +477,8 @@ double IlqrOptimizer::LaneBoundaryCost(
 
   for (int i = 0; i < num_of_knots_; ++i) {
     for (int j = 0; j < config_.num_of_disc; ++j) {
-      // double x = states[i](0, 0) + (L * (j - 0.5) - rf) * std::cos(states[i](2, 0));
-      // double y = states[i](1, 0) + (L * (j - 0.5) - rf) * std::sin(states[i](2, 0));
-      double x = states[i](0, 0);
-      double y = states[i](1, 0);
+      double x = states[i](0, 0) + (L * (j - 0.5) - rf) * std::cos(states[i](2, 0));
+      double y = states[i](1, 0) + (L * (j - 0.5) - rf) * std::sin(states[i](2, 0));
       
       auto cons_left = FindNeastLaneSegment(x, y, shrinked_left_lane_cons_);
       cost += state_barrier_.value(cons_left[0] * x + cons_left[1] * y - cons_left[2]);
@@ -506,9 +512,9 @@ void IlqrOptimizer::CostJacbian(
   *cost_Jx << 2.0 * config_.weights.x_target * (state(0, 0) - goals_[index](0, 0)),
               2.0 * config_.weights.y_target * (state(1, 0) - goals_[index](1, 0)),
               2.0 * config_.weights.theta * (state(2, 0) - goals_[index](2, 0)),
-              2.0 * config_.weights.v * (state(3, 0) - goals_[index](3, 0)),
-              2.0 * config_.weights.a * (state(4, 0) - goals_[index](4, 0)),
-              2.0 * config_.weights.delta * (state(5, 0) - goals_[index](5, 0));
+              0.0,
+              0.0,
+              0.0;
 
   *cost_Ju << 2.0 * config_.weights.jerk * control(0, 0),
               2.0 * config_.weights.delta_rate * control(1, 0);
@@ -577,10 +583,8 @@ void IlqrOptimizer::CorridorConsJacbian(
   Constraints cons = shrinked_corridor_[index];
 
   for (int i = 0; i < config_.num_of_disc; ++i) {
-    // double length_cos = (L * (i - 0.5) - rf) * std::cos(state(2, 0));
-    // double length_sin = (L * (i - 0.5) - rf) * std::cos(state(2, 0));
-    double length_cos = 0;
-    double length_sin = 0;
+    double length_cos = (L * (i - 0.5) - rf) * std::cos(state(2, 0));
+    double length_sin = (L * (i - 0.5) - rf) * std::sin(state(2, 0));
     double x = state(0, 0) + length_cos;
     double y = state(1, 0) + length_sin;
 
@@ -599,10 +603,8 @@ void IlqrOptimizer::CorridorConsHessian(
   Constraints cons = shrinked_corridor_[index];
   Eigen::Matrix<double, kStateNum, kStateNum> ddx = Eigen::MatrixXd::Zero(kStateNum, kStateNum);
   for (int i = 0; i < config_.num_of_disc; ++i) {
-    // double length_cos = (L * (i - 0.5) - rf) * std::cos(state(2, 0));
-    // double length_sin = (L * (i - 0.5) - rf) * std::cos(state(2, 0));
-    double length_cos = 0;
-    double length_sin = 0;
+    double length_cos = (L * (i - 0.5) - rf) * std::cos(state(2, 0));
+    double length_sin = (L * (i - 0.5) - rf) * std::sin(state(2, 0));
     double x = state(0, 0) + length_cos;
     double y = state(1, 0) + length_sin;
 
@@ -619,10 +621,8 @@ void IlqrOptimizer::LaneBoundaryConsJacbian(
   double rf = vehicle_param_.rear_hang_length;
 
   for (int i = 0; i < config_.num_of_disc; ++i) {
-    // double length_cos = (L * (i - 0.5) - rf) * std::cos(state(2, 0));
-    // double length_sin = (L * (i - 0.5) - rf) * std::cos(state(2, 0));
-    double length_cos = 0;
-    double length_sin = 0;
+    double length_cos = (L * (i - 0.5) - rf) * std::cos(state(2, 0));
+    double length_sin = (L * (i - 0.5) - rf) * std::sin(state(2, 0));
     double x = state(0, 0) + length_cos;
     double y = state(1, 0) + length_sin;
       
@@ -642,10 +642,8 @@ void IlqrOptimizer::LaneBoundaryConsHessian(
   Eigen::Matrix<double, kStateNum, kStateNum> ddx = Eigen::MatrixXd::Zero(kStateNum, kStateNum);
 
   for (int i = 0; i < config_.num_of_disc; ++i) {
-    // double length_cos = (L * (i - 0.5) - rf) * std::cos(state(2, 0));
-    // double length_sin = (L * (i - 0.5) - rf) * std::cos(state(2, 0));
-    double length_cos = 0;
-    double length_sin = 0;
+    double length_cos = (L * (i - 0.5) - rf) * std::cos(state(2, 0));
+    double length_sin = (L * (i - 0.5) - rf) * std::sin(state(2, 0));
     double x = state(0, 0) + length_cos;
     double y = state(1, 0) + length_sin;
     
