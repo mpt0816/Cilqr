@@ -25,7 +25,7 @@ struct LateralTrackerConfig {
 };
 
 struct LongitudinalTrackerConfig {
-  double weight_s = 1e-1;
+  double weight_s = 5.0 * 1e-1;
   double weight_v = 1e-12;
   double weight_a = 1e-12;
   double weight_j = 0.1;
@@ -62,8 +62,8 @@ struct IlqrConfig {
   Weights weights;
   int max_iter_num = 20;
 
-  double abs_cost_tol = 1e-3;
-  double rel_cost_tol = 1e-3;
+  double abs_cost_tol = 1e-2;
+  double rel_cost_tol = 1e-2;
 
   double alpha = 1.0;
   double gamma = 0.5;
@@ -82,7 +82,7 @@ struct CorridorConfig {
   double max_axis_y = 10.0;
   
   // 
-  double lane_segment_length = 2.0;
+  double lane_segment_length = 5.0;
 };
 
 struct PlannerConfig {
@@ -96,7 +96,7 @@ struct PlannerConfig {
   /**
    * Time horizon length (s)
    */
-  double tf = 16;
+  double tf = 8;
 
   /**
    * nominal velocity

@@ -19,8 +19,6 @@ IlqrOptimizer::IlqrOptimizer(
     , delta_t_(dt) {
   tracker_.Init(config_.tracker_config, param);
   vehicle_model_ = VehicleModel(config_, vehicle_param_, horizon_, delta_t_);
-  state_barrier_ = BarrierFunction<kStateNum>(config_.t);
-  control_barrier_ = BarrierFunction<kControlNum>(config_.t);
   num_of_knots_ = std::floor(horizon_ / delta_t_ + 1);
   State goal = Eigen::MatrixXd::Zero(kStateNum, 1);
   goals_.resize(num_of_knots_, goal);
@@ -37,8 +35,6 @@ void IlqrOptimizer::Init(
   horizon_ = horizon;
   delta_t_ = dt;
   vehicle_model_ = VehicleModel(config_, vehicle_param_, horizon_, delta_t_);
-  state_barrier_ = BarrierFunction<kStateNum>(config_.t);
-  control_barrier_ = BarrierFunction<kControlNum>(config_.t);
   num_of_knots_ = std::floor(horizon_ / delta_t_ + 1);
   State goal = Eigen::MatrixXd::Zero(kStateNum, 1);
   goals_.resize(num_of_knots_, goal);
@@ -230,10 +226,18 @@ void IlqrOptimizer::Backward(
     auto Qu = cost_Ju[i] + Bs[i].transpose() * Vx;
 
     auto Qxx = cost_Hx[i] + As[i].transpose() * Vxx * As[i];
-    auto Quu = cost_Hu[i] + Bs[i].transpose() * Vxx * Bs[i] + rho_ * Eigen::MatrixXd::Identity(kControlNum, kControlNum);
+    auto Quu = cost_Hu[i] + Bs[i].transpose() * Vxx * Bs[i];
     auto Qux = Bs[i].transpose() * Vxx * As[i]; 
 
-    auto Quu_inv = Quu.inverse();
+    // std::cout << "Qxx: " << Qxx << std::endl;
+    // std::cout << "Quu: " << Quu << std::endl;
+    // std::cout << "Qux: " << Qux << std::endl;
+
+    // std::cout << "------------------------" << std::endl;
+
+    auto Quu_tem = Quu + rho_ * Eigen::MatrixXd::Identity(kControlNum, kControlNum);
+
+    auto Quu_inv = Quu_tem.inverse();
 
     Ks->at(i) = -Quu_inv * Qux;
     ks->at(i) = -Quu_inv * Qu;
@@ -259,6 +263,7 @@ void IlqrOptimizer::Forward(
   double cost = TotalCost(*states, *controls);
   std::cout << "===============Forward==============" << std::endl;
   std::cout << "old cost: " << cost << std::endl;
+  double last_cost = -1e5;
   double alpha = 1.0;
   while (alpha > 1e-8) {
     State x = goals_.front();
@@ -276,17 +281,21 @@ void IlqrOptimizer::Forward(
     std::cout << "new cost: " << new_cost << std::endl;
     double delta_v = 0.0;
     for (int i = 0; i < num_of_knots_ - 1; ++i) {
-      delta_v += (0.5 * alpha * alpha * ks[i].transpose() * Quus[i] * ks[i] + alpha * ks[i].transpose() * Qus[i])(0 ,0);
+      delta_v -= (0.5 * alpha * alpha * ks[i].transpose() * Quus[i] * ks[i] + alpha * ks[i].transpose() * Qus[i])(0 ,0);
+    }
+    
+    double z = 0.0;
+    double dcost = cost - new_cost;
+
+    if (delta_v > 0) {
+      z = dcost / delta_v;
+    } else {
+      z = (0 < dcost) - (dcost < 0);
     }
 
-    std::cout << "delta_v: " << delta_v << std::endl;
-    std::cout << "(cost - new_cost) / (-delta_v): " << (cost - new_cost) / (-delta_v) << std::endl;   
-    // if ((cost - new_cost) / (-delta_v) < 10 && (cost - new_cost) / (-delta_v) > 1e-4) {
-    if (cost - new_cost > math::kMathEpsilon || std::fabs(cost - new_cost) < config_.abs_cost_tol - math::kMathEpsilon) {
+    if (z > 0) {
       *controls = new_controls;
       *states = new_state;
-      rho_ = 1e-10;
-      std::cout << "break;" << std::endl;
       break;
     } else {
       alpha = alpha / 2.0;
@@ -309,13 +318,13 @@ double IlqrOptimizer::TotalCost(
     const std::vector<Control>& controls,
     const bool log) {
   double j_cost = JCost(states, controls);
-  std::cout << "j_cost: " << j_cost << std::endl;
+  // std::cout << "j_cost: " << j_cost << std::endl;
   double dynamics_cost = DynamicsCost(states, controls);
-  std::cout << "dynamics_cost: " << dynamics_cost << std::endl;
+  // std::cout << "dynamics_cost: " << dynamics_cost << std::endl;
   double corridor_cost = CorridorCost(states);
-  std::cout << "corridor_cost: " << corridor_cost << std::endl;
+  // std::cout << "corridor_cost: " << corridor_cost << std::endl;
   double lane_boundary_cost = LaneBoundaryCost(states);
-  std::cout << "lane_boundary_cost: " << lane_boundary_cost << std::endl;
+  // std::cout << "lane_boundary_cost: " << lane_boundary_cost << std::endl;
   double total_cost = j_cost + dynamics_cost + corridor_cost + lane_boundary_cost;
   if (log) {
     cost_.push_back(Cost(total_cost, j_cost, dynamics_cost, corridor_cost, lane_boundary_cost));

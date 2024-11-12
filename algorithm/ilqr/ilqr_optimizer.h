@@ -165,8 +165,11 @@ class IlqrOptimizer {
   VehicleParam vehicle_param_;
 
   VehicleModel vehicle_model_;
-  BarrierFunction<kStateNum> state_barrier_;
-  BarrierFunction<kControlNum> control_barrier_;
+  ExponentialBarrierFunction<kStateNum> state_barrier_;
+  ExponentialBarrierFunction<kControlNum> control_barrier_;
+
+//   QuadraticBarrierFunction<kStateNum> state_barrier_;
+//   QuadraticBarrierFunction<kControlNum> control_barrier_;
   
   TrajectoryPoint start_state_;
   std::vector<State> goals_;
@@ -178,6 +181,11 @@ class IlqrOptimizer {
   Tracker tracker_;
 
   std::vector<Cost> cost_;
+
+  double rhoMin_ = 1e-8;
+  double rhoMax_ = 1e11;
+  double drho_ = 1.0;
+  double rhoFactor_ = 1.6;
   
 };
 
