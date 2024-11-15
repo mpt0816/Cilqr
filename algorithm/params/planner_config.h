@@ -60,7 +60,7 @@ struct IlqrConfig {
   double t = 100.0;
   double t_rate = 10.0;
   Weights weights;
-  int max_iter_num = 20;
+  int max_iter_num = 200;
 
   double abs_cost_tol = 1e-2;
   double rel_cost_tol = 1e-2;

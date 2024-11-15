@@ -112,8 +112,8 @@ class RelaxBarrierFunction : public BarrierFunction<N> {
 
  private:
   double k_ = 2.0;
-  double t_ = 1.0;
-  double epsilon_ = 0.05;
+  double t_ = 20.0;
+  double epsilon_ = 0.5;
   double reciprocal_t_ = 0.0;
 };
 

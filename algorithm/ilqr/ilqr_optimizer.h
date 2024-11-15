@@ -50,6 +50,11 @@ class IlqrOptimizer {
   }
 
  private:
+  void OpenLoopRollout(
+    const DiscretizedTrajectory& coarse_traj,
+    std::vector<State>* const guess_state,
+    std::vector<Control>* const guess_control);
+
   void CalculateDiscRadius();
 
   void TransformGoals(const DiscretizedTrajectory& coarse_traj);

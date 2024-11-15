@@ -157,7 +157,8 @@ void IlqrOptimizer::Optimize(
 
   std::vector<State> states(num_of_knots_);
   std::vector<Control> controls(num_of_knots_ - 1);
-  InitGuess(coarse_traj, &states, &controls);
+  // InitGuess(coarse_traj, &states, &controls);
+  OpenLoopRollout(coarse_traj, &states, &controls);
   iter_trajs->emplace_back(TransformToTrajectory(states, controls));
   
   double cost = TotalCost(states, controls, true);
@@ -690,6 +691,57 @@ DiscretizedTrajectory IlqrOptimizer::TransformToTrajectory(
     }
   }
   return DiscretizedTrajectory(traj);
+}
+
+void IlqrOptimizer::OpenLoopRollout(
+    const DiscretizedTrajectory& coarse_traj,
+    std::vector<State>* const guess_state,
+    std::vector<Control>* const guess_control) {
+  guess_state->resize(num_of_knots_);
+  guess_control->resize(num_of_knots_ - 1);
+  
+  std::vector<Eigen::Matrix<double, kControlNum, kStateNum>> Ks(num_of_knots_ - 1);
+  Eigen::Matrix<double, kStateNum, kStateNum> Q = Eigen::MatrixXd::Zero(6, 6);
+  Q(0, 0) = config_.weights.x_target;
+  Q(1, 1) = config_.weights.y_target;
+  Q(2, 2) = config_.weights.theta;
+  Q(3, 3) = config_.weights.v;
+  Q(4, 4) = config_.weights.a;
+  Q(5, 5) = config_.weights.delta;
+
+  // std::cout << "Q:" << Q << std::endl;
+
+  Eigen::Matrix<double, kControlNum, kControlNum> R;
+  R(0, 0) = config_.weights.jerk;
+  R(1, 1) = config_.weights.delta_rate;
+  Eigen::Matrix<double, kStateNum, kStateNum> P = Q;
+  
+  SystemMatrix A;
+  InputMatrix B;
+  Control control;
+  control << 0.0, 0.0;
+  for (int i = num_of_knots_ - 2; i >= 0; --i) {
+    vehicle_model_.DynamicsJacbian(goals_[i], control, &A, &B);
+    Ks[i] = (R + B.transpose() * P * B).inverse() * (B.transpose() * P * A);
+    P = Q + A.transpose() * P * (A - B * Ks[i]);
+  }
+
+  auto clamp = [](const double x, const double min, const double max) {
+    return std::fmin(max, std::fmax(x, min));
+  };
+  
+  State x;
+  x = goals_[0];
+  guess_state->front() = x;
+  for (int i = 0; i < num_of_knots_ - 1; ++i) {
+    guess_control->at(i) = -Ks[i] * (x - goals_[i]);
+    // guess_control->at(i)(0, 0) = clamp(guess_control->at(i)(0, 0), vehicle_param_.jerk_min, vehicle_param_.jerk_max);
+    // guess_control->at(i)(1, 0) = clamp(guess_control->at(i)(1, 0), vehicle_param_.delta_rate_min, vehicle_param_.delta_rate_max);
+    guess_control->at(i)(0, 0) = 0.0;
+    guess_control->at(i)(1, 0) = 0.0;
+    vehicle_model_.Dynamics(x, guess_control->at(i), &(guess_state->at(i + 1)));
+    x = guess_state->at(i + 1);
+  }
 }
 
 } // namespace planning
