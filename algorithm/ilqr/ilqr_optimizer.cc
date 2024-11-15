@@ -24,6 +24,14 @@ IlqrOptimizer::IlqrOptimizer(
   goals_.resize(num_of_knots_, goal);
   CalculateDiscRadius();
   cost_.clear();
+
+  As.resize(num_of_knots_ - 1);
+  Bs.resize(num_of_knots_ - 1);
+
+  cost_Jx.resize(num_of_knots_);
+  cost_Ju.resize(num_of_knots_ - 1);
+  cost_Hx.resize(num_of_knots_);
+  cost_Hu.resize(num_of_knots_ - 1);
 }
 
 void IlqrOptimizer::Init(
@@ -161,30 +169,140 @@ void IlqrOptimizer::Optimize(
   OpenLoopRollout(coarse_traj, &states, &controls);
   iter_trajs->emplace_back(TransformToTrajectory(states, controls));
   
-  double cost = TotalCost(states, controls, true);
-  std::cout << "init cost: " << cost << std::endl;
-  int iter = 0;
+  double cost_old = TotalCost(states, controls, true);
+  std::cout << "init cost: " << cost_old << std::endl;
   std::vector<Eigen::Matrix<double, kControlNum, kStateNum>> Ks(num_of_knots_ - 1);
   std::vector<Eigen::Matrix<double, kControlNum, 1>> ks(num_of_knots_ - 1);
   std::vector<Eigen::Matrix<double, kControlNum, 1>> Qus;
   std::vector<Eigen::Matrix<double, kControlNum, kControlNum>> Quus;
-  while (iter < config_.max_iter_num) {
-    std::cout << "ilqr iter: " << (iter + 1) << std::endl;
-    Backward(states, controls, &Ks, &ks, &Qus, &Quus);
-    Forward(&states, &controls, Ks, ks, Qus, Quus);
-    double cost_curr = TotalCost(states, controls, true);
-    iter_trajs->emplace_back(TransformToTrajectory(states, controls));
-    if (std::fabs(cost - cost_curr) < config_.abs_cost_tol) {
-      std::cout << "last cost: " << cost << ", current cost: " << cost_curr << std::endl;
-      std::cout << "ilqr converange." << std::endl;
-      break;
+  
+  bool is_forward_pass_updated = true;
+
+  double dcost = 0.0;
+  double lambda = 1.0;
+  double dlambda = 1.0;
+  double z = 0.0;
+  double cost_new = 0.0;
+  
+  double regularization_ratio = 1.6;
+  double regularization_min = 1e-8;
+  double regularization_max = 1e11;
+  double gradient_norm_min = 1e-6;
+  double beta_min = 1e-4;
+  double beta_max = 10.0;
+
+  bool change_barrier_param = false;
+
+  static std::vector<double> alpha_list_{1.0000, 0.5012, 0.2512, 0.1259, 0.0631, 0.0316, 0.0158, 0.0079, 0.0040, 0.0020, 0.0010};
+
+  int iter = 0;
+  control_barrier_.SetEpsilon(0.05);
+  for (; iter < config_.max_iter_num; ++iter) {
+    std::cout << "iter: " << iter << std::endl;
+    if (is_forward_pass_updated) {
+      for (int i = 0; i < num_of_knots_ - 1; ++i) {
+        vehicle_model_.DynamicsJacbian(states[i], controls[i], &(As[i]), &(Bs[i]));
+        CostJacbian(i, states[i], controls[i], &(cost_Jx[i]), &(cost_Ju[i]));
+        CostHessian(i, states[i], controls[i], &(cost_Hx[i]), &(cost_Hu[i]));
+      }
+      Eigen::Matrix<double, kControlNum, 1> temp_Ju = Eigen::MatrixXd::Zero(kControlNum, 1);
+      Eigen::Matrix<double, kControlNum, kControlNum> temp_Hu = Eigen::MatrixXd::Zero(kControlNum, kControlNum);
+      CostJacbian(num_of_knots_ - 1, states.back(), {0.0, 0.0}, &(cost_Jx.back()), &temp_Ju);
+      CostHessian(num_of_knots_ - 1, states.back(), {0.0, 0.0}, &(cost_Hx.back()), &temp_Hu);
+      is_forward_pass_updated = false;
     }
-    cost = cost_curr;
-    std::cout << "ilqr iter, cost: " << cost << std::endl;
-    ++iter;
+
+    bool is_backward_pass_done = false;
+    while (!is_backward_pass_done) {
+      bool is_diverge = Backward(lambda, states, controls, &Ks, &ks, &Qus, &Quus);
+      // backward pass发散, 增大正则化系数，重新进行 backward pass
+      if (is_diverge) {
+        dlambda = std::fmax(dlambda * regularization_ratio, regularization_ratio);
+        lambda = std::fmax(lambda * dlambda, regularization_min);
+        if (lambda > regularization_max) {
+          std::cout << "Ilqr Solver Failed: lambda > regularization_max!!" << std::endl;
+          *opt_trajectory = TransformToTrajectory(states, controls);
+          ROS_ERROR("Ilqr Solver Failed: lambda > regularization_max!");
+          return;
+        } else {
+          continue;
+        }
+      }
+      is_backward_pass_done = true;
+    }
+
+    double gnorm = CalGradientNorm(ks, controls);
+    if (gnorm < gradient_norm_min && lambda < 1e-5) {
+      std::cout << "Ilqr Solver kSuccess! gnorm < gradient_norm_min" << std::endl;
+      *opt_trajectory = TransformToTrajectory(states, controls);
+      ROS_ERROR("Ilqr Solver kSuccess!");
+      return;
+    }
+
+    bool is_forward_pass_done = false;
+    double alpha = 0.0;
+    if (is_backward_pass_done) {
+      for (int i = 0; i < alpha_list_.size(); ++i) {
+        std::vector<State> old_state = states;
+        std::vector<Control> old_controls = controls;
+        alpha = alpha_list_[i];
+        // update x_list_ and u_list_ in ForwardPass
+        Forward(alpha, &states, &controls, Ks, ks, Qus, Quus);
+        cost_new = TotalCost(states, controls, true);
+        // std::cout << "cost_new: " << cost_new << std::endl;
+        dcost = cost_old - cost_new;
+        double expected = -alpha * (delta_V_[0] + alpha * delta_V_[1]);
+        
+        z = dcost / expected;
+        if ((z > beta_min && z < beta_max) && dcost > 0.0) {
+          is_forward_pass_done = true;
+          break;
+        }
+        // 需要改变 alpha 的值重新进行 forward pass
+        states = old_state;
+        controls = old_controls;
+      }
+
+      if(!is_forward_pass_done) {
+        alpha = 0.0;
+      }
+    }
+
+    if (is_forward_pass_done) {
+      dlambda = std::fmin(dlambda / regularization_ratio, 1.0 / regularization_ratio);
+      // 保证 lambda 大于最小值
+      lambda = lambda * dlambda * (lambda > regularization_min);
+
+      is_forward_pass_updated = true;
+      std::cout << "forward_pass_done, cost_new: " << cost_new << std::endl;
+      std::cout << "dcost: " << dcost << std::endl;
+      // ilqr 迭代收敛
+      if ((dcost < config_.abs_cost_tol && dcost > 0.0)||
+          std::fabs(dcost / cost_old) < config_.rel_cost_tol) {
+        cost_old = cost_new;
+        *opt_trajectory = TransformToTrajectory(states, controls);
+        ROS_ERROR("Ilqr Solver kSuccess!");
+        std::cout << "Ilqr Solver kSuccess! dcost < config_.abs_cost_tol" << std::endl;
+        return;
+      }
+      cost_old = cost_new;
+    } else {
+      dlambda = std::fmax(dlambda * regularization_ratio, regularization_ratio);
+      lambda = std::fmax(lambda * dlambda, regularization_min);
+      std::cout << "forward_pass failed. " << cost_new << std::endl;
+      // ilqr 迭代发散
+      if (lambda > regularization_max) {
+        *opt_trajectory = TransformToTrajectory(states, controls);
+        std::cout << "Ilqr Solver kUnsolved!" << std::endl;
+        ROS_ERROR("Ilqr Solver kUnsolved!");
+        return;
+      }
+    }
   }
 
+
   if (iter == config_.max_iter_num) {
+    std::cout << "Ilqr Solver Reach Max Iter!" << std::endl;
     ROS_ERROR("Ilqr Solver Reach Max Iter!");
   }
 
@@ -193,32 +311,27 @@ void IlqrOptimizer::Optimize(
   *opt_trajectory = TransformToTrajectory(states, controls);
 }
 
-void IlqrOptimizer::Backward(
+double IlqrOptimizer::CalGradientNorm(
+    const std::vector<Eigen::Matrix<double, kControlNum, 1>>& ks, 
+    const std::vector<Control>& controls) {
+  std::vector<double> vals(ks.size());
+  Eigen::VectorXd v;
+  for (int i = 0; i < vals.size(); ++i) {
+    v = ks[i].cwiseAbs().array() / (controls[i].cwiseAbs().array() + 1);
+    vals[i] = v.maxCoeff();
+  }
+  return std::accumulate(vals.begin(), vals.end(), 0.0) / vals.size();
+}
+
+bool IlqrOptimizer::Backward(
+    const double lambda,
     const std::vector<State>& states,
     const std::vector<Control>& controls,
     std::vector<Eigen::Matrix<double, kControlNum, kStateNum>>* const Ks,
     std::vector<Eigen::Matrix<double, kControlNum, 1>>* const ks,
     std::vector<Eigen::Matrix<double, kControlNum, 1>>* const Qus,
     std::vector<Eigen::Matrix<double, kControlNum, kControlNum>>* const Quus) {
-  
-  std::vector<SystemMatrix> As(num_of_knots_ - 1);
-  std::vector<InputMatrix> Bs(num_of_knots_ - 1);
-
-  std::vector<Eigen::Matrix<double, kStateNum, 1>> cost_Jx(num_of_knots_, Eigen::MatrixXd::Zero(kStateNum, 1));
-  std::vector<Eigen::Matrix<double, kControlNum, 1>> cost_Ju(num_of_knots_ - 1, Eigen::MatrixXd::Zero(kControlNum, 1));
-  std::vector<Eigen::Matrix<double, kStateNum, kStateNum>> cost_Hx(num_of_knots_, Eigen::MatrixXd::Zero(kStateNum, kStateNum));
-  std::vector<Eigen::Matrix<double, kControlNum, kControlNum>> cost_Hu(num_of_knots_ - 1, Eigen::MatrixXd::Zero(kControlNum, kControlNum));
-
-  for (int i = 0; i < num_of_knots_ - 1; ++i) {
-    vehicle_model_.DynamicsJacbian(states[i], controls[i], &(As[i]), &(Bs[i]));
-    CostJacbian(i, states[i], controls[i], &(cost_Jx[i]), &(cost_Ju[i]));
-    CostHessian(i, states[i], controls[i], &(cost_Hx[i]), &(cost_Hu[i]));
-  }
-  Eigen::Matrix<double, kControlNum, 1> temp_Ju = Eigen::MatrixXd::Zero(kControlNum, 1);
-  Eigen::Matrix<double, kControlNum, kControlNum> temp_Hu = Eigen::MatrixXd::Zero(kControlNum, kControlNum);
-  CostJacbian(num_of_knots_ - 1, states.back(), {0.0, 0.0}, &(cost_Jx.back()), &temp_Ju);
-  CostHessian(num_of_knots_ - 1, states.back(), {0.0, 0.0}, &(cost_Hx.back()), &temp_Hu);
-
+  delta_V_[0] = 0.0; delta_V_[1] = 0.0;
   Eigen::Matrix<double, kStateNum, 1> Vx = cost_Jx.back();
   Eigen::Matrix<double, kStateNum, kStateNum> Vxx = cost_Hx.back();
   Qus->clear();
@@ -237,22 +350,39 @@ void IlqrOptimizer::Backward(
 
     // std::cout << "------------------------" << std::endl;
 
-    auto Quu_tem = Quu + rho_ * Eigen::MatrixXd::Identity(kControlNum, kControlNum);
+    auto Quu_tem = Quu + lambda * Eigen::MatrixXd::Identity(kControlNum, kControlNum);
 
     auto Quu_inv = Quu_tem.inverse();
 
     Ks->at(i) = -Quu_inv * Qux;
     ks->at(i) = -Quu_inv * Qu;
 
+    // Eigen::LLT<Eigen::MatrixXd> Quu_fact(Quu_tem);
+    // if (Quu_fact.info() != Eigen::Success) {
+    //   std::cout << "not positive." << std::endl;
+    //   return false;
+    // }
+
+    // Ks->at(i) = -Qux;
+    // ks->at(i) = -Qu;
+    // Quu_fact.solveInPlace(Ks->at(i));
+    // Quu_fact.solveInPlace(ks->at(i));
+
     Vx = Qx + Ks->at(i).transpose() * Quu * ks->at(i) + Ks->at(i).transpose() * Qu + Qux.transpose() * ks->at(i);
     Vxx = Qxx + Ks->at(i).transpose() * Quu * Ks->at(i) + Ks->at(i).transpose() * Qux + Qux.transpose() * Ks->at(i);
+    Vxx = 0.5 * (Vxx + Vxx.transpose());
+
+    delta_V_[0] += ks->at(i).transpose() * Qu; 
+    delta_V_[1] += 0.5 * ks->at(i).transpose() * Quu * ks->at(i);
 
     Qus->push_back(Qu);
     Quus->push_back(Quu);
   }
+  return false;
 }
 
 void IlqrOptimizer::Forward(
+    const double alpha,
     std::vector<State>* const states,
     std::vector<Control>* const controls,
     const std::vector<Eigen::Matrix<double, kControlNum, kStateNum>>& Ks,
@@ -262,59 +392,18 @@ void IlqrOptimizer::Forward(
   
   std::vector<State> new_state = *states;
   std::vector<Control> new_controls = *controls;
-  double cost = TotalCost(*states, *controls);
-  std::cout << "===============Forward==============" << std::endl;
-  std::cout << "old cost: " << cost << std::endl;
-  double last_cost = -1e5;
-  double alpha = 1.0;
-  while (alpha > 1e-8) {
-    State x = goals_.front();
-    new_state.front() = x;
-    for (int i = 0; i < num_of_knots_ - 1; ++i) {
-      new_controls[i] = new_controls[i] + Ks[i] * (x - states->at(i)) + alpha * ks[i];
-      new_controls[i](1, 0) = math::NormalizeAngle(new_controls[i](1, 0)); 
-      // std::cout << "control: " << controls->at(i) << std::endl;
-      vehicle_model_.Dynamics(x, new_controls[i], &x);
-      new_state.at(i + 1) = x;
-    }
-    // *states = new_state;
 
-    double new_cost = TotalCost(new_state, *controls);
-    std::cout << "new cost: " << new_cost << std::endl;
-    double delta_v = 0.0;
-    for (int i = 0; i < num_of_knots_ - 1; ++i) {
-      delta_v -= (0.5 * alpha * alpha * ks[i].transpose() * Quus[i] * ks[i] + alpha * ks[i].transpose() * Qus[i])(0 ,0);
-    }
-    
-    double z = 0.0;
-    double dcost = cost - new_cost;
-
-    // if (delta_v > 0) {
-    //   z = dcost / delta_v;
-    // } else {
-    //   z = (0 < dcost) - (dcost < 0);
-    // }
-
-    z = dcost / delta_v;
-
-    if ((delta_v > 0 && z > 1e-4 && z < 10.0) || dcost > 0.0) {
-      *controls = new_controls;
-      *states = new_state;
-      break;
-    } else {
-      alpha = alpha / 2.0;
-      new_state = *states;
-      new_controls = *controls;
-    }
+  State x = goals_.front();
+  new_state.front() = x;
+  for (int i = 0; i < num_of_knots_ - 1; ++i) {
+    new_controls[i] = new_controls[i] + Ks[i] * (x - states->at(i)) + alpha * ks[i];
+    new_controls[i](1, 0) = math::NormalizeAngle(new_controls[i](1, 0));
+    vehicle_model_.Dynamics(x, new_controls[i], &x);
+    new_state.at(i + 1) = x;
   }
 
-  if (alpha < 1e-8) {
-    rho_ = rho_ * 1.75;
-  }
-
-  // std::cout << "after forward cost: " << TotalCost(*states, *controls) << std::endl;
-  // std::cout << "sates addr: " << states << std::endl;
-  
+  *controls = new_controls;
+  *states = new_state;
 }
 
 double IlqrOptimizer::TotalCost(

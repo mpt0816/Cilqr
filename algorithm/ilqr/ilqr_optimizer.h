@@ -73,7 +73,8 @@ class IlqrOptimizer {
       DiscretizedTrajectory* const opt_trajectory,
       std::vector<DiscretizedTrajectory>* const iter_trajs);
 
-  void Backward(
+  bool Backward(
+      const double lambda,
       const std::vector<State>& states,
       const std::vector<Control>& controls,
       std::vector<Eigen::Matrix<double, kControlNum, kStateNum>>* const Ks,
@@ -82,6 +83,7 @@ class IlqrOptimizer {
     std::vector<Eigen::Matrix<double, kControlNum, kControlNum>>* const Quus);
 
   void Forward(
+      const double alpha,
       std::vector<State>* const states,
       std::vector<Control>* const controls,
       const std::vector<Eigen::Matrix<double, kControlNum, kStateNum>>& Ks,
@@ -158,6 +160,10 @@ class IlqrOptimizer {
 
   void NormalizeHalfPlane();
 
+  double CalGradientNorm(
+      const std::vector<Eigen::Matrix<double, kControlNum, 1>>& ks, 
+      const std::vector<Control>& controls);
+
  private:
   double horizon_;
   double delta_t_;
@@ -194,7 +200,16 @@ class IlqrOptimizer {
   double rhoMax_ = 1e11;
   double drho_ = 1.0;
   double rhoFactor_ = 1.6;
+
+  std::vector<SystemMatrix> As;
+  std::vector<InputMatrix> Bs;
+
+  std::vector<Eigen::Matrix<double, kStateNum, 1>> cost_Jx;
+  std::vector<Eigen::Matrix<double, kControlNum, 1>> cost_Ju;
+  std::vector<Eigen::Matrix<double, kStateNum, kStateNum>> cost_Hx;
+  std::vector<Eigen::Matrix<double, kControlNum, kControlNum>> cost_Hu;
   
+  double delta_V_[2];
 };
 
 } // namespace planning

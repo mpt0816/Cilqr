@@ -93,7 +93,7 @@ bool TrajectoryPlanner::Plan(
     return false;
   }
 
-  // figure_plot.Plot(coarse_trajectory, opt_trajectory);
+  figure_plot.Plot(coarse_trajectory, opt_trajectory);
   figure_plot.Plot(coarse_trajectory, iter_trajs, ilqr_optimizer_.cost());
 
   // opt_trajectory = coarse_trajectory;

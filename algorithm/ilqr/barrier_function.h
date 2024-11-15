@@ -18,6 +18,10 @@ class BarrierFunction {
 
   virtual ~BarrierFunction() = default;
 
+  virtual void SetParam(const double t) = 0;
+
+  virtual double GetParam() = 0;
+
   virtual double value(const double x) = 0;
 
   virtual Eigen::Matrix<double, N, 1> Jacbian(
@@ -81,6 +85,22 @@ class RelaxBarrierFunction : public BarrierFunction<N> {
     reciprocal_t_ = 1.0 / t_;
   }
 
+  void SetParam(const double t) override {
+    t_ = t;
+    // t_ = std::fmin(20.0, t_);
+    // t_ = std::fmax(1.0, t_);
+    reciprocal_t_ = 1.0 / t_;
+  }
+
+  double GetParam() override {
+    return t_;
+  }
+
+  void SetEpsilon(const double epsilon) {
+    epsilon_ = epsilon;
+  }
+
+
   double value(const double x) override { 
     if (x < -epsilon_) {
       return -reciprocal_t_ * std::log(-x);
@@ -112,8 +132,8 @@ class RelaxBarrierFunction : public BarrierFunction<N> {
 
  private:
   double k_ = 2.0;
-  double t_ = 20.0;
-  double epsilon_ = 0.5;
+  double t_ = 5.0;
+  double epsilon_ = 0.1;
   double reciprocal_t_ = 0.0;
 };
 
