@@ -21,7 +21,7 @@ source devel/setup.bash
 ```
 ## 2. Example
 
-[![Demo]](https://github.com/mpt0816/Cilqr/blob/master/resources/demo.webm)
+https://github.com/mpt0816/Cilqr/blob/master/resources/demo.webm
 
 ### 2.1 Costs of iterations
 ![demo](./resources/cost.png)
