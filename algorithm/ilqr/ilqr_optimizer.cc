@@ -161,7 +161,7 @@ void IlqrOptimizer::Optimize(
   iter_trajs->emplace_back(TransformToTrajectory(states, controls));
   
   double cost = TotalCost(states, controls, true);
-  std::cout << "cost: " << cost << std::endl;
+  std::cout << "init cost: " << cost << std::endl;
   int iter = 0;
   std::vector<Eigen::Matrix<double, kControlNum, kStateNum>> Ks(num_of_knots_ - 1);
   std::vector<Eigen::Matrix<double, kControlNum, 1>> ks(num_of_knots_ - 1);
@@ -174,6 +174,7 @@ void IlqrOptimizer::Optimize(
     double cost_curr = TotalCost(states, controls, true);
     iter_trajs->emplace_back(TransformToTrajectory(states, controls));
     if (std::fabs(cost - cost_curr) < config_.abs_cost_tol) {
+      std::cout << "last cost: " << cost << ", current cost: " << cost_curr << std::endl;
       std::cout << "ilqr converange." << std::endl;
       break;
     }
@@ -287,13 +288,15 @@ void IlqrOptimizer::Forward(
     double z = 0.0;
     double dcost = cost - new_cost;
 
-    if (delta_v > 0) {
-      z = dcost / delta_v;
-    } else {
-      z = (0 < dcost) - (dcost < 0);
-    }
+    // if (delta_v > 0) {
+    //   z = dcost / delta_v;
+    // } else {
+    //   z = (0 < dcost) - (dcost < 0);
+    // }
 
-    if (z > 0) {
+    z = dcost / delta_v;
+
+    if ((delta_v > 0 && z > 1e-4 && z < 10.0) || dcost > 0.0) {
       *controls = new_controls;
       *states = new_state;
       break;

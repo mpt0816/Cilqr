@@ -36,7 +36,7 @@ class Cost {
       Eigen::Ref<Eigen::MatrixXd> luu, 
       Eigen::Ref<Eigen::MatrixXd> lux) = 0;
 
-  virtual ~CostFunction() = default;
+  virtual ~Cost() = default;
 }
 
 } // namespace ilqr

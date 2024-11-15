@@ -20,7 +20,6 @@ class Constraint {
       Eigen::Ref<Eigen::VectorXd> lx,
       Eigen::Ref<Eigen::VectorXd> lu) = 0;
   
-  // for OCP, states and control are independent
   virtual void Hessian(
       const Eigen::Ref<const Eigen::VetorXd>& x,
       const Eigen::Ref<const Eigen::VetorXd>& u, 
@@ -36,7 +35,7 @@ class Constraint {
       Eigen::Ref<Eigen::MatrixXd> luu, 
       Eigen::Ref<Eigen::MatrixXd> lux) = 0;
 
-  virtual ~CostFunction() = default;
+  virtual ~Constraint() = default;
 }
 
 } // namespace ilqr

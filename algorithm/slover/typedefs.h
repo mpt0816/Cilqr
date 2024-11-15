@@ -19,6 +19,11 @@ enum class ErrorCode {
   kControlDimUnknown,
 };
 
+enum class SolveiLQRMethod {
+  kBarrier;
+  kAL;
+};
+
 enum class SolveGainMethod {
   kCholeshy,
   KBoxQp,
@@ -36,6 +41,8 @@ enum class SolverStatus {
 
 struct Options {
   Options() = default;
+
+  SolveiLQRMethod solve_ilqr_method = SolveiLQRMethod::kBarrier;
   
   int iter_max = 200;
   double tol_abs = 1e-3;

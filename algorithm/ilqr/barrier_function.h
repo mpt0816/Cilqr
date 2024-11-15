@@ -75,6 +75,49 @@ class ExponentialBarrierFunction : public BarrierFunction<N> {
 };
 
 template<std::size_t N>
+class RelaxBarrierFunction : public BarrierFunction<N> {
+ public:
+  RelaxBarrierFunction() {
+    reciprocal_t_ = 1.0 / t_;
+  }
+
+  double value(const double x) override { 
+    if (x < -epsilon_) {
+      return -reciprocal_t_ * std::log(-x);
+    } else {
+      return 0.5 * reciprocal_t_ * (std::pow((-x - 2.0 * epsilon_) / epsilon_, 2.0) - 1) - reciprocal_t_ * std::log(epsilon_);
+    }
+  }
+
+  Eigen::Matrix<double, N, 1> Jacbian(
+      const double x, const Eigen::Matrix<double, N, 1>& dx) override {
+    if (x < -epsilon_) {
+      return - reciprocal_t_ / x * dx;
+    } else {
+      return reciprocal_t_ * (x + 2.0 * epsilon_) / epsilon_ / epsilon_ * dx;
+    }
+  }
+  
+  Eigen::Matrix<double, N, N>
+  Hessian(
+      const double x, 
+      const Eigen::Matrix<double, N, 1>& dx, 
+      const Eigen::Matrix<double, N, N>& ddx = Eigen::MatrixXd::Zero(N, N)) override {
+    if (x < -epsilon_) {
+      return reciprocal_t_ / x / x * dx * dx.transpose() - reciprocal_t_ / x * ddx;
+    } else {
+      return reciprocal_t_ * (x + 2.0 * epsilon_) / epsilon_ / epsilon_ * dx * dx.transpose();
+    }
+  }
+
+ private:
+  double k_ = 2.0;
+  double t_ = 1.0;
+  double epsilon_ = 0.05;
+  double reciprocal_t_ = 0.0;
+};
+
+template<std::size_t N>
 class QuadraticBarrierFunction : public BarrierFunction<N> {
  public:  
   QuadraticBarrierFunction() {

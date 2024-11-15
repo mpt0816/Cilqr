@@ -165,11 +165,14 @@ class IlqrOptimizer {
   VehicleParam vehicle_param_;
 
   VehicleModel vehicle_model_;
-  ExponentialBarrierFunction<kStateNum> state_barrier_;
-  ExponentialBarrierFunction<kControlNum> control_barrier_;
+//   ExponentialBarrierFunction<kStateNum> state_barrier_;
+//   ExponentialBarrierFunction<kControlNum> control_barrier_;
 
 //   QuadraticBarrierFunction<kStateNum> state_barrier_;
 //   QuadraticBarrierFunction<kControlNum> control_barrier_;
+
+  RelaxBarrierFunction<kStateNum> state_barrier_;
+  RelaxBarrierFunction<kControlNum> control_barrier_;
   
   TrajectoryPoint start_state_;
   std::vector<State> goals_;
