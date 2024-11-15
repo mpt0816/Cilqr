@@ -277,8 +277,7 @@ void IlqrOptimizer::Optimize(
       std::cout << "forward_pass_done, cost_new: " << cost_new << std::endl;
       std::cout << "dcost: " << dcost << std::endl;
       // ilqr 迭代收敛
-      if ((dcost < config_.abs_cost_tol && dcost > 0.0)||
-          std::fabs(dcost / cost_old) < config_.rel_cost_tol) {
+      if (dcost < config_.abs_cost_tol) {
         cost_old = cost_new;
         *opt_trajectory = TransformToTrajectory(states, controls);
         ROS_ERROR("Ilqr Solver kSuccess!");
