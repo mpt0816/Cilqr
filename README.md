@@ -2,8 +2,7 @@
 
 C++/ROS Source Codes for Trajectory planning for autonomous driving using ilqr solver.
 
-![OnRoadPlanning](resources/static.png)
-
+![demo](./resources/demo.png)
 ## 1. Installation
 
 Requirements
@@ -20,17 +19,30 @@ cd ..
 catkin_make
 source devel/setup.bash
 ```
-
 ## 2. Example
 
+[![Demo]](https://github.com/mpt0816/Cilqr/blob/master/resources/demo.webm)
 
-https://github.com/mpt0816/Cilqr/blob/master/resources/ilqr_trajectory.webm
+### 2.1 Costs of iterations
+![demo](./resources/cost.png)
 
+### 2.2 Trajectory of iterations
+![demo](./resources/iter_results.png)
 
+### 2.3 Final Trajectory
+![demo](./resources/results.png)
+
+## 3. Run
 Example test case with 6 pedestrians, 3 moving vehicles and 2 static vehicles.
 
 ```shell
 roslaunch planning pedestrian_test.launch
+```
+
+or
+```shell
+cd ~/catkin_ws/src
+bash src/Cilqr/scripts/run.sh
 ```
 
 **Click anywhere in Rviz window with the `2D Nav Goal` Tool to start planning.**
@@ -41,12 +53,18 @@ Generate and run new random case:
 roslaunch planning random_pedestrian_test.launch
 ```
 
-## 4. Generate Safety Corridor
+- Red Trajectory: Coarse Trajectory from DP Planner;
+- Yellow Trajectory: Init guess Trajectory from Cilqr, whilch just got straight line;
+- Green Trajectory: Final Trajectory from Cilqr;
 
-<video src="./resources/corridor_generator_1.webm"></video>
+If you want to get a better result, use the `Tracker` to get the initial guess.
 
+```cpp
+  // in src/Cilqr/algorithm/ilqr_optimizer.cpp , line 168 ~ 169
+  // InitGuess(coarse_traj, &states, &controls);
+  OpenLoopRollout(coarse_traj, &states, &controls);
+```
 
-## 3. Acknowledgement
-
-Special thanks to [Bai Li](https://github.com/libai1943/CartesianPlanner) for ros simulation environment
+## 4. Acknowledgement
+Special thanks to [Bai Li](https://github.com/libai1943/CartesianPlanner) for ros simulation environment and [Galaxy](https://github.com/StarryN/Galaxy) for the safe corridor.
 
