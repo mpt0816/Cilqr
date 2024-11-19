@@ -102,6 +102,9 @@ class RelaxBarrierFunction : public BarrierFunction<N> {
 
 
   double value(const double x) override { 
+    if (x < 0.0) {
+      return 0.0;
+    }
     if (x < -epsilon_) {
       return -reciprocal_t_ * std::log(-x);
     } else {
@@ -111,6 +114,9 @@ class RelaxBarrierFunction : public BarrierFunction<N> {
 
   Eigen::Matrix<double, N, 1> Jacbian(
       const double x, const Eigen::Matrix<double, N, 1>& dx) override {
+    if (x < 0.0) {
+      return 0 * dx;
+    }
     if (x < -epsilon_) {
       return - reciprocal_t_ / x * dx;
     } else {
@@ -123,6 +129,9 @@ class RelaxBarrierFunction : public BarrierFunction<N> {
       const double x, 
       const Eigen::Matrix<double, N, 1>& dx, 
       const Eigen::Matrix<double, N, N>& ddx = Eigen::MatrixXd::Zero(N, N)) override {
+    if (x < 0.0) {
+      return Eigen::MatrixXd::Zero(N, N);
+    }
     if (x < -epsilon_) {
       return reciprocal_t_ / x / x * dx * dx.transpose() - reciprocal_t_ / x * ddx;
     } else {
