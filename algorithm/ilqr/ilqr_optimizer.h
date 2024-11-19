@@ -50,7 +50,7 @@ class IlqrOptimizer {
   }
 
  private:
-  void OpenLoopRollout(
+  void iqr(
     const DiscretizedTrajectory& coarse_traj,
     std::vector<State>* const guess_state,
     std::vector<Control>* const guess_control);
