@@ -168,8 +168,9 @@ void IlqrOptimizer::Optimize(
   // InitGuess(coarse_traj, &states, &controls);
   iqr(coarse_traj, &states, &controls);
   iter_trajs->emplace_back(TransformToTrajectory(states, controls));
-  
-  double cost_old = TotalCost(states, controls, true);
+  Cost cost_data;
+  double cost_old = TotalCost(states, controls, &cost_data);
+  cost_.push_back(cost_data);
   std::cout << "init cost: " << cost_old << std::endl;
   std::vector<Eigen::Matrix<double, kControlNum, kStateNum>> Ks(num_of_knots_ - 1);
   std::vector<Eigen::Matrix<double, kControlNum, 1>> ks(num_of_knots_ - 1);
@@ -196,7 +197,7 @@ void IlqrOptimizer::Optimize(
   static std::vector<double> alpha_list_{1.0000, 0.5012, 0.2512, 0.1259, 0.0631, 0.0316, 0.0158, 0.0079, 0.0040, 0.0020, 0.0010};
 
   int iter = 0;
-  control_barrier_.SetEpsilon(0.05);
+  // control_barrier_.SetEpsilon(0.05);
   for (; iter < config_.max_iter_num; ++iter) {
     std::cout << "iter: " << iter << std::endl;
     if (is_forward_pass_updated) {
@@ -248,7 +249,7 @@ void IlqrOptimizer::Optimize(
         alpha = alpha_list_[i];
         // update x_list_ and u_list_ in ForwardPass
         Forward(alpha, &states, &controls, Ks, ks, Qus, Quus);
-        cost_new = TotalCost(states, controls, true);
+        cost_new = TotalCost(states, controls, &cost_data);
         // std::cout << "cost_new: " << cost_new << std::endl;
         dcost = cost_old - cost_new;
         double expected = -alpha * (delta_V_[0] + alpha * delta_V_[1]);
@@ -278,15 +279,21 @@ void IlqrOptimizer::Optimize(
       std::cout << "dcost: " << dcost << std::endl;
       // ilqr 迭代收敛
       if (dcost < config_.abs_cost_tol ||
-          (dcost < 1.0 && dcost / cost_old < config_.rel_cost_tol)) {
+          dcost / cost_old < config_.rel_cost_tol) {
+        cost_.push_back(cost_data);
         cost_old = cost_new;
         *opt_trajectory = TransformToTrajectory(states, controls);
         ROS_ERROR("Ilqr Solver kSuccess!");
-        std::cout << "Ilqr Solver kSuccess! dcost < config_.abs_cost_tol" << std::endl;
+        if (dcost < config_.abs_cost_tol) {
+          std::cout << "Ilqr Solver kSuccess! dcost < config_.abs_cost_tol" << std::endl;
+        } else {
+          std::cout << "Ilqr Solver kSuccess! dcost < config_.rel_cost_tol" << std::endl;
+        }
         return;
       }
       iter_trajs->emplace_back(TransformToTrajectory(states, controls));
       cost_old = cost_new;
+      cost_.push_back(cost_data);
     } else {
       dlambda = std::fmax(dlambda * regularization_ratio, regularization_ratio);
       lambda = std::fmax(lambda * dlambda, regularization_min);
@@ -410,7 +417,7 @@ void IlqrOptimizer::Forward(
 double IlqrOptimizer::TotalCost(
     const std::vector<State>& states,
     const std::vector<Control>& controls,
-    const bool log) {
+    Cost* const cost) {
   double j_cost = JCost(states, controls);
   // std::cout << "j_cost: " << j_cost << std::endl;
   double dynamics_cost = DynamicsCost(states, controls);
@@ -420,9 +427,9 @@ double IlqrOptimizer::TotalCost(
   double lane_boundary_cost = LaneBoundaryCost(states);
   // std::cout << "lane_boundary_cost: " << lane_boundary_cost << std::endl;
   double total_cost = j_cost + dynamics_cost + corridor_cost + lane_boundary_cost;
-  if (log) {
-    cost_.push_back(Cost(total_cost, j_cost, dynamics_cost, corridor_cost, lane_boundary_cost));
-  }
+
+  *cost = Cost(total_cost, j_cost, dynamics_cost, corridor_cost, lane_boundary_cost);
+
   
   return total_cost;
   // return j_cost + dynamics_cost;

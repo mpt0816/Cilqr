@@ -18,6 +18,8 @@ struct Cost {
   double corridor_cost = 0.0;
   double lane_boundary_cost = 0.0;
 
+  Cost() = default;
+
   Cost(const double c0, const double c1, const double c2,
        const double c3, const double c4)
       : total_cost(c0), target_cost(c1), dynamic_cost(c2)
@@ -94,7 +96,7 @@ class IlqrOptimizer {
   double TotalCost(
       const std::vector<State>& states,
       const std::vector<Control>& controls,
-      const bool log = false);
+      Cost* const cost);
 
   double JCost(
       const std::vector<State>& states,
