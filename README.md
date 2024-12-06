@@ -9,6 +9,7 @@ Requirements
 
 * ROS Melodic or later
 * Python3
+* Eigen 3.4.0
 
 Clone repository to any catkin workspace and compile workspace
 
@@ -54,7 +55,7 @@ roslaunch planning random_pedestrian_test.launch
 ```
 
 - Red Trajectory: Coarse Trajectory from DP Planner;
-- Yellow Trajectory: Init guess Trajectory from Cilqr, whilch just got straight line;
+- Yellow Trajectory: Init guess Trajectory from Cilqr, whilch solved with LQR;
 - Green Trajectory: Final Trajectory from Cilqr;
 
 If you want to get a better result, use the `Tracker` to get the initial guess.
